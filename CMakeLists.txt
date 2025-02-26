@@ -12,4 +12,10 @@ file(GLOB_RECURSE SRC_FILES src/*.cpp src/*.hpp)
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
+
+set(MNIST_DATA_LOCATION ${CMAKE_SOURCE_DIR}/data/mnist)
+set(MNIST_FOUND TRUE)
+
+configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
+
 target_include_directories(${PROJECT_NAME} PUBLIC src/ src/deps/)

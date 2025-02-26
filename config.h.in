@@ -1,0 +1,6 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define MNIST_DATA_LOCATION "@MNIST_DATA_LOCATION@"
+
+#endif // CONFIG_H
