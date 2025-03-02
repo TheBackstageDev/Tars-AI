@@ -2,6 +2,7 @@
 #define NTARS_DENSE_LAYER_HPP
 
 #include <vector>
+#include "tarsmath/linear_algebra/matrix_component.hpp"
 #include "ntars/base/neuron.hpp"
 
 namespace NTARS
@@ -12,48 +13,31 @@ namespace NTARS
         DenseLayer(size_t numNeurons, size_t numInputs)
             : numNeurons(numNeurons), numInputs(numInputs)
         {
+            _activations.resize(numNeurons);
             for (size_t i = 0; i < numNeurons; ++i)
             {
-                neurons.push_back(Neuron(numInputs));
-            }
-        }
-
-        std::vector<double> forward(const std::vector<double>& inputs)
-        {
-            std::vector<double> results(numNeurons);
-            for (size_t i = 0; i < numNeurons; ++i)
-            {
-                results[i] = neurons[i].activate(inputs);
-            }
-            return results;
-        }
-
-        void updateWeights(const std::vector<std::vector<double>>& newWeights)
-        {
-            for (size_t i = 0; i < numNeurons; ++i)
-            {
-                for (size_t j = 0; j < numInputs; ++j)
-                {
-                    neurons[i].updateWeight(j, newWeights[i][j]);
-                }
-            }
-        }
-
-        void updateBiases(const std::vector<double>& newBiases)
-        {
-            for (size_t i = 0; i < numNeurons; ++i)
-            {
-                neurons[i].updateBias(newBiases[i]);
+                _neurons.emplace_back();
             }
         }
         
-        inline Neuron& getNeuron(size_t index) { return neurons.at(index); }
-        inline std::vector<Neuron>& getNeurons() { return neurons; }
+        std::vector<double>& forward(const std::vector<double>& inputs, const TMATH::Matrix_t<double>& weights, const TMATH::Matrix_t<double>& biases)
+        {
+            for (size_t i = 0; i < numNeurons; ++i)
+            {
+                _activations[i] = _neurons[i].activate(inputs, weights.rowAt(i), biases.at(i, 0));
+            }
+            return _activations;
+        }
+        
+        inline Neuron& getNeuron(size_t index) { return _neurons.at(index); }
+        inline std::vector<Neuron>& getNeurons() { return _neurons; }
+        inline std::vector<double> getActivations() const { return _activations; }
 
     private:
         size_t numNeurons;
         size_t numInputs;
-        std::vector<Neuron> neurons;
+        std::vector<double> _activations;
+        std::vector<Neuron> _neurons;
     };
     
 } // namespace NTARS

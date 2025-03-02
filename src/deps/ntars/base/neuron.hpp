@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cassert>
+#include <random>
 #include "tarsmath/calculus/sigmoid.hpp"
 
 namespace NTARS
@@ -12,24 +13,9 @@ namespace NTARS
     class Neuron
     {
     public:
-        Neuron(size_t numInputs) : weights(numInputs)
-        {
-            std::srand(static_cast<unsigned int>(std::time(nullptr)));
+        Neuron() = default;
 
-            for (auto& weight : weights)
-            {
-                weight = static_cast<double>(std::rand()) / RAND_MAX;
-            }
-
-            bias = static_cast<double>(std::rand()) / RAND_MAX;
-
-            static uint32_t last_id;
-            this->id = ++last_id;
-        }
-
-        inline uint32_t getId() const { return id; }
-
-        double activate(const std::vector<double>& inputs) const
+        const double activate(const std::vector<double>& inputs, const std::vector<double>& weights, const double bias)
         {
             double sum{0.0};
 
@@ -39,25 +25,15 @@ namespace NTARS
             }
             sum += bias;
 
-            return TMATH::sigmoid(sum);
+            this->activation = TMATH::sigmoid(sum);
+
+            return activation;
         }
 
-        inline void updateWeight(size_t index, double newWeight)
-        {
-            assert(index < weights.size() && "Out of Bounds");
-
-            weights[index] = newWeight;
-        }
-
-        inline void updateBias(double newBias) { bias = newBias; }
-
-        _NODISCARD inline std::vector<double> getWeights() const { return weights; }
-        _NODISCARD inline double getBias() const { return bias; }
+        inline double getActivation() const  { return activation; }
 
     private:
-        std::vector<double> weights;
-        uint32_t id;
-        double bias;
+        double activation{0};
     };
 } // namespace NTARS
 

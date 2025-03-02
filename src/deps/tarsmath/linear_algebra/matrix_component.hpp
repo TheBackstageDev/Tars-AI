@@ -4,55 +4,56 @@
 #include "tarsmath/linear_algebra/vector_component.hpp"
 
 #include <array>
+#include <vector>
 #include <assert.h>
 
 namespace TMATH
 {
-    template<typename T, size_t N, size_t M>
+    template<typename T>
     class Matrix_t
     {
     public:
-        Matrix_t()
-            : elements_{} {}
+        Matrix_t(size_t rows, size_t cols)
+            : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols)) {}
 
-        Matrix_t(const std::array<std::array<T, M>, N>& elements)
-            : elements_(elements) {}
-        
-        Matrix_t(const T& x)
-            : elements_{} {
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
-                    elements_[i][j] = x;
-                }
-            }
+        Matrix_t(const std::vector<std::vector<T>>& elements)
+            : elements_(elements), rows_(elements.size()), cols_(elements[0].size()) {}
+
+        Matrix_t(const T& x, size_t rows, size_t cols)
+            : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols, x)) {}
+
+        inline T& at(size_t row, size_t col)
+        {
+            assert((row < rows_ && col < cols_) && "Matrix Index out of bounds");
+            return elements_[row][col];
         }
-
-        inline T& at(size_t row, size_t col) {
-            assert((row < N && col < M) && "Matrix Index out of bounds");
-
+    
+        inline const T& at(size_t row, size_t col) const
+        {
+            assert((row < rows_ && col < cols_) && "Matrix Index out of bounds");
             return elements_[row][col];
         }
 
-        inline const T& at(size_t row, size_t col) const {
-            assert((row < N && col < M) && "Matrix Index out of bounds");
-
-            return elements_[row][col];
+        inline const std::vector<T>& rowAt(size_t row) const
+        {
+            assert((row < rows_ ) && "Matrix Row Index out of bounds");
+            return elements_[row];
         }
 
         inline size_t rows() const {
-            return N;
+            return rows_;
         }
         inline size_t cols() const {
-            return M;
+            return cols_;
         }
 
-        constexpr bool operator==(const Matrix_t<T, N, M>& other) const {
+        constexpr bool operator==(const Matrix_t<T>& other) const {
             if (this->rows() != other.rows() || this->cols() != other.cols()) {
                 return false;
             }
 
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
+            for (size_t i = 0; i < rows_; ++i) {
+                for (size_t j = 0; j < cols_; ++j) {
                     if (elements_[i][j] != other.elements_[i][j]) {
                         return false;
                     }
@@ -60,81 +61,110 @@ namespace TMATH
             }
             return true;
         }
-        constexpr bool operator!=(const Matrix_t<T, N, M>& other) const {
+        constexpr bool operator!=(const Matrix_t<T>& other) const {
             return !(*this == other);
         }
         
-        Matrix_t<T, N, M> operator+(const Matrix_t<T, N, M>& other) const {
-            Matrix_t<T, N, M> result{};
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
-                    result.elements_[i][j] = elements_[i][j] + other.elements_[i][j];
+        Matrix_t<T> operator+(const Matrix_t<T>& other) const
+        {
+            assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for addition");
+    
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(i, j) = elements_[i][j] + other.at(i, j);
                 }
             }
             return result;
         }
-        Matrix_t<T, N, M> operator-(const Matrix_t<T, N, M>& other) const {
-            Matrix_t<T, N, M> result{};
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
-                    result.elements_[i][j] = elements_[i][j] - other.elements_[i][j];
+        Matrix_t<T> operator-(const Matrix_t<T>& other) const
+        {
+            assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for subtraction");
+    
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(i, j) = elements_[i][j] - other.at(i, j);
                 }
             }
             return result;
-        } 
-        template<size_t P>
-        Matrix_t<T, N, P> operator*(const Matrix_t<T, M, P>& other) const {
-            static_assert(N == P && "Matrix multiplication requires the number of columns in the first matrix to be equal to the number of rows in the second matrix");
-
-            Matrix_t<T, N, P> result{};
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < P; ++j) {
+        }
+        Matrix_t<T> operator*(const Matrix_t<T>& other) const
+        {
+            assert(cols_ == other.rows() && "Matrix multiplication requires the number of columns in the first matrix to be equal to the number of rows in the second matrix");
+    
+            Matrix_t<T> result(rows_, other.cols());
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < other.cols(); ++j)
+                {
                     result.at(i, j) = T{};
-                    for (size_t k = 0; k < M; ++k) {
+                    for (size_t k = 0; k < cols_; ++k)
+                    {
                         result.at(i, j) += elements_[i][k] * other.at(k, j);
                     }
                 }
             }
             return result;
-        }
-        Matrix_t<T, N, M> operator/(const Matrix_t<T, N, M>& other) const {
-            Matrix_t<T, N, M> result{};
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
-                    result.elements_[i][j] = elements_[i][j] / other.elements_[i][j];
+        }    
+        Matrix_t<T> operator/(const Matrix_t<T>& other) const
+        {
+            assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for division");
+    
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(i, j) = elements_[i][j] / other.at(i, j);
                 }
             }
             return result;
         }
-        Matrix_t<T, N, M> operator*(const T& scalar) const {
-            Matrix_t<T, N, M> result{};
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
-                    result.elements_[i][j] = elements_[i][j] * scalar;
+        Matrix_t<T> operator*(const T& scalar) const
+        {
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(i, j) = elements_[i][j] * scalar;
+                }
+            }
+            return result;
+        } 
+        Matrix_t<T> operator/(const T& scalar) const
+        {
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(i, j) = elements_[i][j] / scalar;
+                }
+            }
+            return result;
+        }  
+        Matrix_t<T> transpose() const
+        {
+            Matrix_t<T> result(cols_, rows_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(j, i) = elements_[i][j];
                 }
             }
             return result;
         }
-        Matrix_t<T, N, M> operator/(const T& scalar) const {
-            Matrix_t<T, N, M> result;
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
-                    result.elements_[i][j] = elements_[i][j] / scalar;
-                }
-            }
-            return result;
-        }
-        Matrix_t<T, M, N> transpose() const {
-            Matrix_t<T, M, N> result{};
-            for (size_t i = 0; i < N; ++i) {
-                for (size_t j = 0; j < M; ++j) {
-                    result.elements_[j][i] = elements_[i][j];
-                }
-            }
-            return result;
-        }
+
     private:
-        std::array<std::array<T, M>, N> elements_;
+        size_t rows_, cols_;
+        std::vector<std::vector<T>> elements_;
     };
     struct Matrix2x2
     {

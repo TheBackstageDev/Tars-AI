@@ -52,6 +52,11 @@
         "array": "cpp",
         "string": "cpp",
         "fstream": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "*.in": "cpp",
+        "algorithm": "cpp",
+        "optional": "cpp",
+        "random": "cpp",
+        "numeric": "cpp"
     }
 }
