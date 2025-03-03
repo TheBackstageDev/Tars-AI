@@ -17,7 +17,7 @@ int main()
 
     const size_t batch_size = 100;
     const size_t epochs = 1;
-    const double learningRate = 0.05;
+    const double learningRate = 0.5;
 
     const auto& data = dataset.training_images;
     for (size_t i = 0; i < data.size() / batch_size; ++i)
@@ -34,8 +34,6 @@ int main()
         batches.emplace_back(std::move(miniBatch));
     }
 
-    double result;
-
 /*     for (size_t epoch = 0; epoch < epochs; ++epoch)
     {
         for (size_t i = 0; i < batches.size(); ++i)
@@ -45,10 +43,12 @@ int main()
     }
  */
 
-    result = network.train(batches.at(0), learningRate);
-    std::vector<double> outputs = network.run(batches.at(0).at(0).data);
+    for (size_t i = 0; i < 100; ++i)
+    {
+        auto result = network.train(batches.at(i), learningRate);
 
-    std::cout << "Result (Rights / Total): " + std::to_string(result);
+        std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
+    }
 
     return 0;
 }

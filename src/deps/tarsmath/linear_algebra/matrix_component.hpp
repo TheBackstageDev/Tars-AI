@@ -19,6 +19,15 @@ namespace TMATH
         Matrix_t(const std::vector<std::vector<T>>& elements)
             : elements_(elements), rows_(elements.size()), cols_(elements[0].size()) {}
 
+        Matrix_t(const std::vector<T>& elements)
+            : rows_(elements.size()), cols_(1), elements_(rows_, std::vector<T>(1))
+        {
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                elements_[i][0] = elements[i];
+            }
+        }
+
         Matrix_t(const T& x, size_t rows, size_t cols)
             : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols, x)) {}
 
@@ -32,6 +41,12 @@ namespace TMATH
         {
             assert((row < rows_ && col < cols_) && "Matrix Index out of bounds");
             return elements_[row][col];
+        }
+
+        inline std::vector<T>& rowAt(size_t row)
+        {
+            assert((row < rows_ ) && "Matrix Row Index out of bounds");
+            return elements_[row];
         }
 
         inline const std::vector<T>& rowAt(size_t row) const
@@ -159,6 +174,48 @@ namespace TMATH
                     result.at(j, i) = elements_[i][j];
                 }
             }
+            return result;
+        }
+  
+        Matrix_t<T>& operator+=(const Matrix_t<T>& other)
+        {
+            assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for addition");
+
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    elements_[i][j] += other.at(i, j);
+                }
+            }
+            return *this;
+        }
+        Matrix_t<T>& operator-=(const Matrix_t<T>& other)
+        {
+            assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for subtraction");
+
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    elements_[i][j] -= other.at(i, j);
+                }
+            }
+            return *this;
+        }
+
+        Matrix_t<T> elementWiseMultiplication(const Matrix_t<T>& otherMatrix) const
+        {
+            assert((rows_ == otherMatrix.rows_ && cols_ == otherMatrix.cols_) && "Matrix dimensions must agree for element-wise multiplication");
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t row = 0; row < rows_; ++row)
+            {
+                for (size_t col = 0; col < cols_; ++col)
+                {
+                    result.at(row, col) = elements_[row][col] * otherMatrix.at(row, col);
+                }
+            }
+        
             return result;
         }
 

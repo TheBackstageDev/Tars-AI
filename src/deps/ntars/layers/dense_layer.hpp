@@ -29,6 +29,8 @@ namespace NTARS
             return _activations;
         }
         
+        inline size_t getNumInputs() const { return numInputs; }
+        inline size_t getNumOutputs() const { return numNeurons; }
         inline Neuron& getNeuron(size_t index) { return _neurons.at(index); }
         inline std::vector<Neuron>& getNeurons() { return _neurons; }
         inline std::vector<double> getActivations() const { return _activations; }

@@ -18,7 +18,7 @@ namespace NTARS
 
         std::vector<double> run(const std::vector<double>& inputs);
 
-        double train(std::vector<NTARS::DATA::TrainingData<std::vector<double>>>& miniBatch, double learningRate = 0.1);
+        double train(std::vector<NTARS::DATA::TrainingData<std::vector<double>>>& miniBatch, double learningRate = 1);
 
         inline std::vector<size_t> getStructure() const { return _structure; }
         inline std::vector<DenseLayer>& getLayers() { return _layers; }
@@ -35,6 +35,8 @@ namespace NTARS
         {
             return meanSquaredError(results.data(), expected.data(), results.size());
         }
+
+        std::vector<double> runInternal(const std::vector<double>& inputs);
 
         std::vector<TMATH::Matrix_t<double>> weights;
         std::vector<TMATH::Matrix_t<double>> biases;
