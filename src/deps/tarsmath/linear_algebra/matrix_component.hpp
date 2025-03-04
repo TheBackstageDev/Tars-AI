@@ -16,6 +16,12 @@ namespace TMATH
         Matrix_t(size_t rows, size_t cols)
             : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols)) {}
 
+        Matrix_t(size_t size)
+            : rows_(size), cols_(size), elements_(size, std::vector<T>(size)) {}
+
+        Matrix_t(const T& x, size_t rows, size_t cols)
+            : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols, x)) {}
+
         Matrix_t(const std::vector<std::vector<T>>& elements)
             : elements_(elements), rows_(elements.size()), cols_(elements[0].size()) {}
 
@@ -28,8 +34,7 @@ namespace TMATH
             }
         }
 
-        Matrix_t(const T& x, size_t rows, size_t cols)
-            : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols, x)) {}
+        const std::vector<std::vector<T>>& getElementsRaw() const { return elements_; }
 
         inline T& at(size_t row, size_t col)
         {

@@ -4,6 +4,7 @@
 #include <vector>
 #include "tarsmath/linear_algebra/matrix_component.hpp"
 #include "ntars/base/neuron.hpp"
+#include "json/json.hpp"
 
 namespace NTARS
 {

@@ -9,14 +9,14 @@
 
 int main() 
 {
-    NTARS::DenseNeuralNetwork network{{784, 128, 64, 10}};
+    //NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
+    NTARS::DenseNeuralNetwork network{"TARS.json"};
     mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset =
         mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
 
     std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<double>>>> batches{};
 
     const size_t batch_size = 100;
-    const size_t epochs = 1;
     const double learningRate = 0.5;
 
     const auto& data = dataset.training_images;
@@ -34,21 +34,15 @@ int main()
         batches.emplace_back(std::move(miniBatch));
     }
 
-/*     for (size_t epoch = 0; epoch < epochs; ++epoch)
+    double result = 0.0;
+    for (size_t i = 0; i < 20; ++i)
     {
-        for (size_t i = 0; i < batches.size(); ++i)
-        {
-            result = network.train(batches[i], learningRate);
-        }
-    }
- */
-
-    for (size_t i = 0; i < 100; ++i)
-    {
-        auto result = network.train(batches.at(i), learningRate);
+        result = network.train(batches.at(i), result < 0.85 ? learningRate : learningRate / 2);
 
         std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
     }
+
+    network.save();
 
     return 0;
 }

@@ -10,13 +10,67 @@ constexpr bool debug =
 #endif
 
 #include <iostream>
+#include <filesystem>
+#include <fstream>
+#include "json/json.hpp"
 
 namespace NTARS
 {
-    DenseNeuralNetwork::DenseNeuralNetwork(const std::vector<size_t>& structure) : _structure(structure)
+    DenseNeuralNetwork::DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name)
+     : _structure(structure), name(name)
     {
         initializeWeightsAndBiases(structure);
         createLayers(structure);
+    }
+
+    DenseNeuralNetwork::DenseNeuralNetwork(const std::string& file)
+    {
+        nlohmann::json loaded;
+
+        std::filesystem::path outputPath = std::filesystem::current_path() / "networks" / file;        
+        std::ifstream inFile(outputPath);
+
+        try 
+        {
+            if (inFile.is_open())
+            {
+                inFile >> loaded;
+            
+                if (!loaded.contains("weights") || 
+                    !loaded.contains("biases") || 
+                    !loaded.contains("name") || 
+                    !loaded.contains("structure"))
+                {
+                    throw std::runtime_error("JSON file '" + file + "' doesn't contain required keys: 'weights', 'biases', 'name', or 'structure'");
+                }
+
+                name = loaded["name"].get<std::string>();
+            
+                biases.clear();
+                for (const auto& biasMatrix : loaded["biases"])
+                {
+                    biases.emplace_back(TMATH::Matrix_t(biasMatrix.get<std::vector<std::vector<double>>>()));
+                }
+
+                weights.clear();
+                for (const auto& weightMatrix : loaded["weights"])
+                {
+                    weights.emplace_back(TMATH::Matrix_t(weightMatrix.get<std::vector<std::vector<double>>>()));
+                }
+
+                createLayers(loaded["structure"].get<std::vector<size_t>>());
+            
+                std::cout << "Network loaded successfully: " << outputPath.string() << std::endl;
+            }
+            else
+            {
+                std::cerr << "Could not open file for loading: " << outputPath.string() << std::endl;
+            }            
+        }
+        catch(std::exception e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
     }
 
     void DenseNeuralNetwork::initializeWeightsAndBiases(const std::vector<size_t>& structure)
@@ -63,19 +117,15 @@ namespace NTARS
         }
     };
 
-    std::vector<double> DenseNeuralNetwork::run(const std::vector<double>& inputs)
+    uint32_t DenseNeuralNetwork::run(const std::vector<double>& inputs)
     {
         std::vector<double> currentInputs = inputs;
         for (size_t l = 0; l < _layers.size(); ++l)
         {
             currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
         }
-        for (size_t i = 0; i < currentInputs.size(); ++i)
-        {
-            currentInputs[i] = TMATH::sigmoid(currentInputs[i]);
-        }
 
-        return currentInputs;
+        return getMostActive(currentInputs);
     }
 
     std::vector<double> DenseNeuralNetwork::runInternal(const std::vector<double>& inputs)
@@ -87,6 +137,44 @@ namespace NTARS
         }
 
         return currentInputs;
+    }
+
+    void DenseNeuralNetwork::save()
+    {
+        nlohmann::json saved;
+        
+        saved["structure"] = _structure;
+        saved["name"] = name;
+        
+        for (const auto& weightMatrix : weights)
+        {
+            saved["weights"].push_back(weightMatrix.getElementsRaw());
+        }
+
+        for (const auto& biasMatrix : biases)
+        {
+            saved["biases"].push_back(biasMatrix.getElementsRaw());
+        }
+        
+        std::filesystem::path outputPath = std::filesystem::current_path() / "networks";        
+        
+        if (!std::filesystem::exists(outputPath))
+        {
+            std::filesystem::create_directory(outputPath);
+        }
+
+        std::ofstream outFile(outputPath / std::string(name + ".json"));
+
+        if (outFile.is_open())
+        {
+            outFile << saved.dump(); 
+            outFile.close();
+            std::cout << "Network saved successfully: " << outputPath << std::endl;
+        }
+        else
+        {
+            std::cerr << "Could not open file for writing: " << outputPath << std::endl;
+        }
     }
 
     double DenseNeuralNetwork::train(std::vector<NTARS::DATA::TrainingData<std::vector<double>>>& miniBatch, double learningRate)
@@ -112,18 +200,12 @@ namespace NTARS
 
             expected.at(expectedLabel) = 1.0;
 
-            std::vector<double> outputDelta(outputs.size());
-            for (size_t i = 0; i < outputDelta.size(); ++i)
+            std::vector<TMATH::Matrix_t<double>> deltas(_layers.size(), TMATH::Matrix_t<double>(0, 0));
+            TMATH::Matrix_t<double> outputDelta(outputs.size(), 1);
+            for (size_t i = 0; i < outputs.size(); ++i)
             {
-                outputDelta[i] = expected[i] - outputs[i];
+                outputDelta.at(i, 0) = expected[i] - outputs[i];
             }
-
-            std::vector<TMATH::Matrix_t<double>> deltas;
-            for (size_t i = 0; i < _layers.size(); ++i)
-            {
-                deltas.emplace_back(TMATH::Matrix_t<double>(_layers[i].getNumOutputs(), 1));
-            }
-            
             deltas.back() = outputDelta;
 
             for (size_t l = _layers.size() - 1; l > 0; --l)
@@ -143,6 +225,13 @@ namespace NTARS
             
                 weightGradients[l] += gradient;
                 biasGradients[l] += deltas[l];
+
+                if (debug && l == 0)
+                {
+                    std::cout << "Gradient(0,0): " << gradient.at(0, 0) 
+                              << " Delta(0): " << deltas[l].at(0, 0) 
+                              << " PrevActiv(0): " << prevActivations.at(0, 0) << std::endl;
+                }
             }
 
             getMostActive(outputs) == expectedLabel

@@ -14,11 +14,14 @@ namespace NTARS
     class DenseNeuralNetwork 
     {
     public:
-        DenseNeuralNetwork(const std::vector<size_t>& structure);
+        DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name);
+        DenseNeuralNetwork(const std::string& file);
 
-        std::vector<double> run(const std::vector<double>& inputs);
+        uint32_t run(const std::vector<double>& inputs);
 
         double train(std::vector<NTARS::DATA::TrainingData<std::vector<double>>>& miniBatch, double learningRate = 1);
+
+        void save();
 
         inline std::vector<size_t> getStructure() const { return _structure; }
         inline std::vector<DenseLayer>& getLayers() { return _layers; }
@@ -40,6 +43,8 @@ namespace NTARS
 
         std::vector<TMATH::Matrix_t<double>> weights;
         std::vector<TMATH::Matrix_t<double>> biases;
+
+        std::string name;
 
         std::vector<DenseLayer> _layers;
         std::vector<size_t> _structure;
