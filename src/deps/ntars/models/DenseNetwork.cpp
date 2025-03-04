@@ -44,6 +44,7 @@ namespace NTARS
                     throw std::runtime_error("JSON file '" + file + "' doesn't contain required keys: 'weights', 'biases', 'name', or 'structure'");
                 }
 
+                name.clear();
                 name = loaded["name"].get<std::string>();
             
                 biases.clear();

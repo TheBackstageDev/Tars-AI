@@ -16,8 +16,8 @@ int main()
 
     std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<double>>>> batches{};
 
-    const size_t batch_size = 100;
-    const double learningRate = 0.5;
+    const size_t batch_size = 200;
+    const double learningRate = 0.2;
 
     const auto& data = dataset.training_images;
     for (size_t i = 0; i < data.size() / batch_size; ++i)
@@ -35,9 +35,9 @@ int main()
     }
 
     double result = 0.0;
-    for (size_t i = 0; i < 20; ++i)
+    for (auto& minibatch : batches)
     {
-        result = network.train(batches.at(i), result < 0.85 ? learningRate : learningRate / 2);
+        result = network.train(minibatch, learningRate);
 
         std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
     }
