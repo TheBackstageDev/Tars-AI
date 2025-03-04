@@ -59,7 +59,8 @@ namespace NTARS
                     weights.emplace_back(TMATH::Matrix_t(weightMatrix.get<std::vector<std::vector<double>>>()));
                 }
 
-                createLayers(loaded["structure"].get<std::vector<size_t>>());
+                _structure = loaded["structure"].get<std::vector<size_t>>();
+                createLayers(_structure);
             
                 std::cout << "Network loaded successfully: " << outputPath.string() << std::endl;
             }

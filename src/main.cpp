@@ -5,9 +5,11 @@
 #include "ntars/base/data.hpp"
 #include "mnist/mnist_reader.hpp"
 
+#include "core/window.hpp"
+
 #include "../config.h"
 
-int main() 
+void NeuralNetworkTrain()
 {
     //NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
     NTARS::DenseNeuralNetwork network{"TARS.json"};
@@ -43,6 +45,20 @@ int main()
     }
 
     network.save();
+}
 
+int main() 
+{
+    core::window_t window{"Neural Network Editor", 1000, 800};
+    
+    while (!window.should_close())
+    {
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glfwSwapBuffers(window.window());
+        
+        glfwPollEvents();
+    }
+    
     return 0;
 }

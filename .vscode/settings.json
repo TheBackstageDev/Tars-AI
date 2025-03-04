@@ -74,6 +74,9 @@
         "unordered_map": "cpp",
         "valarray": "cpp",
         "xhash": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "coroutine": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp"
     }
 }
