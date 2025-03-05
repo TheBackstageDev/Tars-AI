@@ -8,3 +8,4 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(glfw)
 add_subdirectory(glad)
+add_subdirectory(imgui)

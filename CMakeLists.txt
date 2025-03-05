@@ -17,5 +17,5 @@ set(MNIST_FOUND TRUE)
 
 configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 
-target_include_directories(${PROJECT_NAME} PUBLIC src/ src/deps/ deps/ deps/glfw/include)
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad opengl32)
+target_include_directories(${PROJECT_NAME} PUBLIC src/ src/deps/ deps/ deps/glfw/include deps/imgui/imgui)
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad opengl32 imgui)

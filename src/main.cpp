@@ -5,8 +5,7 @@
 #include "ntars/base/data.hpp"
 #include "mnist/mnist_reader.hpp"
 
-#include "core/window.hpp"
-
+#include "core/application.hpp"
 #include "../config.h"
 
 void NeuralNetworkTrain()
@@ -49,16 +48,17 @@ void NeuralNetworkTrain()
 
 int main() 
 {
-    core::window_t window{"Neural Network Editor", 1000, 800};
-    
-    while (!window.should_close())
-    {
-        glClear(GL_COLOR_BUFFER_BIT);
+    core::application app{"Neural Network Controller", 1000, 800};
 
-        glfwSwapBuffers(window.window());
-        
-        glfwPollEvents();
+    try
+    {
+        app.run();
     }
-    
-    return 0;
+    catch(std::exception e)
+    {
+        std::cerr << "An Exception Occured: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
