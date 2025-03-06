@@ -22,6 +22,16 @@ namespace core
 
         glfwMakeContextCurrent(_p_window);
         glfwSwapInterval(1); // Enable vsync
+
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+        {
+            std::cerr << "Failed to initialize GLAD" << std::endl;
+            glfwTerminate();
+            exit(EXIT_FAILURE);
+        }
+
+        glViewport(0, 0, width, height);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     }
 
     window_t::~window_t()
