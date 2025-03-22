@@ -17,9 +17,9 @@ namespace NTARS
         DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name);
         DenseNeuralNetwork(const std::string& file);
 
-        uint32_t run(const std::vector<double>& inputs);
+        uint32_t run(const std::vector<float>& inputs);
 
-        double train(std::vector<NTARS::DATA::TrainingData<std::vector<double>>>& miniBatch, double learningRate = 1);
+        float train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
 
         void save();
 
@@ -29,20 +29,20 @@ namespace NTARS
         void initializeWeightsAndBiases(const std::vector<size_t>& structure);
         void createLayers(const std::vector<size_t>& structure);
 
-        constexpr uint32_t getMostActive(const std::vector<double>& outputs) const
+        constexpr uint32_t getMostActive(const std::vector<float>& outputs) const
         {
             return std::distance(outputs.begin(), std::max_element(outputs.begin(), outputs.end()));
         }
 
-        double cost(const std::vector<double>& results, const std::vector<double>& expected) const
+        float cost(const std::vector<float>& results, const std::vector<float>& expected) const
         {
             return meanSquaredError(results.data(), expected.data(), results.size());
         }
 
-        std::vector<double> runInternal(const std::vector<double>& inputs);
+        std::vector<float> runInternal(const std::vector<float>& inputs);
 
-        std::vector<TMATH::Matrix_t<double>> weights;
-        std::vector<TMATH::Matrix_t<double>> biases;
+        std::vector<TMATH::Matrix_t<float>> weights;
+        std::vector<TMATH::Matrix_t<float>> biases;
 
         std::string name;
 

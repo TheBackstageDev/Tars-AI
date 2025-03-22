@@ -10,28 +10,29 @@
 #include "ntars/base/data.hpp"
 #include "mnist/mnist_reader.hpp"
 
+#include <chrono>
 #include "../config.h"
 
 void NeuralNetworkTrain()
 {
-    //NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
-    NTARS::DenseNeuralNetwork network{"TARS.json"};
+    NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
+    //NTARS::DenseNeuralNetwork network{"TARS.json"};
     mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset =
         mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
 
-    std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<double>>>> batches{};
+    std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
     const size_t batch_size = 500;
-    const double learningRate = 0.1;
+    const float learningRate = 0.1;
 
     const auto& data = dataset.training_images;
     for (size_t i = 0; i < data.size() / batch_size; ++i)
     {
-        std::vector<NTARS::DATA::TrainingData<std::vector<double>>> miniBatch{};
+        std::vector<NTARS::DATA::TrainingData<std::vector<float>>> miniBatch{};
         for (size_t j = 0; j < batch_size && (i + j) < data.size(); ++j)
         {
-            NTARS::DATA::TrainingData<std::vector<double>> newData{};
-            newData.data = std::vector<double>(data.at(i + j).begin(), data.at(i + j).end());
+            NTARS::DATA::TrainingData<std::vector<float>> newData{};
+            newData.data = std::vector<float>(data.at(i + j).begin(), data.at(i + j).end());
             newData.label = dataset.training_labels.at(i + j);
     
             miniBatch.emplace_back(std::move(newData));
@@ -39,12 +40,15 @@ void NeuralNetworkTrain()
         batches.emplace_back(std::move(miniBatch));
     }
 
-    double result = 0.0;
+    float result = 0.0;
     for (auto& minibatch : batches)
     {
+        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
         result = network.train(minibatch, learningRate);
+        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
         std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
+        std::cout << "it took " << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds to complete this training session" << std::endl;
     }
 
     network.save();
@@ -54,7 +58,7 @@ namespace core
 {
     application::application(const std::string& title, uint32_t width, uint32_t height)
     {
-        //NeuralNetworkTrain();
+        NeuralNetworkTrain();
         window = std::make_unique<window_t>(title, width, height);
         imguiSetup();
     }
@@ -144,7 +148,7 @@ namespace core
                 texture_image_tuple = getRandomImage(dataset);
                 texture = std::get<0>(texture_image_tuple);
                 actualLabelIndex = std::get<2>(texture_image_tuple);
-                aiGuess = network.run(std::vector<double>(std::get<1>(texture_image_tuple).begin(), std::get<1>(texture_image_tuple).end()));
+                aiGuess = network.run(std::vector<float>(std::get<1>(texture_image_tuple).begin(), std::get<1>(texture_image_tuple).end()));
             }
             ImGui::Image((ImTextureID)texture, ImVec2(280, 280)); 
             ImGui::End();
@@ -161,3 +165,5 @@ namespace core
     }
     
 } // namespace core
+
+

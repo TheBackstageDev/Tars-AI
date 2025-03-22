@@ -12,7 +12,9 @@ constexpr bool debug =
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+
 #include "json/json.hpp"
+#include "deps/tarscuda/tensor_operations.hpp"
 
 namespace NTARS
 {
@@ -50,13 +52,13 @@ namespace NTARS
                 biases.clear();
                 for (const auto& biasMatrix : loaded["biases"])
                 {
-                    biases.emplace_back(TMATH::Matrix_t(biasMatrix.get<std::vector<std::vector<double>>>()));
+                    biases.emplace_back(TMATH::Matrix_t(biasMatrix.get<std::vector<std::vector<float>>>()));
                 }
 
                 weights.clear();
                 for (const auto& weightMatrix : loaded["weights"])
                 {
-                    weights.emplace_back(TMATH::Matrix_t(weightMatrix.get<std::vector<std::vector<double>>>()));
+                    weights.emplace_back(TMATH::Matrix_t(weightMatrix.get<std::vector<std::vector<float>>>()));
                 }
 
                 _structure = loaded["structure"].get<std::vector<size_t>>();
@@ -79,7 +81,7 @@ namespace NTARS
     {
         static std::random_device rd;
         static std::mt19937 gen(rd());
-        std::normal_distribution<double> dist(0.0, 1.0); 
+        std::normal_distribution<float> dist(0.0, 1.0); 
     
         weights.clear(); 
         biases.clear();
@@ -89,9 +91,9 @@ namespace NTARS
             size_t numInputs = structure[i]; 
             size_t numOutputs = structure[i + 1]; 
     
-            double scale = std::sqrt(2.0 / (numInputs + numOutputs));
+            float scale = std::sqrt(2.0 / (numInputs + numOutputs));
     
-            TMATH::Matrix_t<double> weightMatrix(numOutputs, numInputs);
+            TMATH::Matrix_t<float> weightMatrix(numOutputs, numInputs);
             for (size_t j = 0; j < numOutputs; ++j)
             {
                 for (size_t k = 0; k < numInputs; ++k)
@@ -100,7 +102,7 @@ namespace NTARS
                 }
             }
     
-            TMATH::Matrix_t<double> biasMatrix(numOutputs, 1);
+            TMATH::Matrix_t<float> biasMatrix(numOutputs, 1);
             for (size_t j = 0; j < numOutputs; ++j)
             {
                 biasMatrix.at(j, 0) = 0.1; 
@@ -119,9 +121,9 @@ namespace NTARS
         }
     };
 
-    uint32_t DenseNeuralNetwork::run(const std::vector<double>& inputs)
+    uint32_t DenseNeuralNetwork::run(const std::vector<float>& inputs)
     {
-        std::vector<double> currentInputs = inputs;
+        std::vector<float> currentInputs = inputs;
         for (size_t l = 0; l < _layers.size(); ++l)
         {
             currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
@@ -130,9 +132,9 @@ namespace NTARS
         return getMostActive(currentInputs);
     }
 
-    std::vector<double> DenseNeuralNetwork::runInternal(const std::vector<double>& inputs)
+    std::vector<float> DenseNeuralNetwork::runInternal(const std::vector<float>& inputs)
     {
-        std::vector<double> currentInputs = inputs;
+        std::vector<float> currentInputs = inputs;
         for (size_t l = 0; l < _layers.size(); ++l)
         {
             currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
@@ -148,12 +150,12 @@ namespace NTARS
         saved["structure"] = _structure;
         saved["name"] = name;
         
-        for (const auto& weightMatrix : weights)
+        for (auto& weightMatrix : weights)
         {
             saved["weights"].push_back(weightMatrix.getElementsRaw());
         }
 
-        for (const auto& biasMatrix : biases)
+        for (auto& biasMatrix : biases)
         {
             saved["biases"].push_back(biasMatrix.getElementsRaw());
         }
@@ -179,61 +181,54 @@ namespace NTARS
         }
     }
 
-    double DenseNeuralNetwork::train(std::vector<NTARS::DATA::TrainingData<std::vector<double>>>& miniBatch, double learningRate)
+    float DenseNeuralNetwork::train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate)
     {
         int numCorrect{0};
         int numWrong{0};
 
-        std::vector<TMATH::Matrix_t<double>> weightGradients(_layers.size(), TMATH::Matrix_t<double>(0, 0));
-        std::vector<TMATH::Matrix_t<double>> biasGradients(_layers.size(), TMATH::Matrix_t<double>(0, 1));
+        std::vector<TMATH::Matrix_t<float>> weightGradients(_layers.size(), TMATH::Matrix_t<float>(0, 0));
+        std::vector<TMATH::Matrix_t<float>> biasGradients(_layers.size(), TMATH::Matrix_t<float>(0, 1));
 
         for (size_t l = 0; l < _layers.size(); ++l)
         {
-            weightGradients[l] = TMATH::Matrix_t<double>(weights[l].rows(), weights[l].cols());
-            biasGradients[l] = TMATH::Matrix_t<double>(biases[l].rows(), 1);
+            weightGradients[l] = TMATH::Matrix_t<float>(weights[l].rows(), weights[l].cols());
+            biasGradients[l] = TMATH::Matrix_t<float>(biases[l].rows(), 1);
         }
         
         for (auto& image : miniBatch)
         {
-            std::vector<double> outputs = runInternal(image.data);
-            std::vector<double> expected(outputs.size(), 0.0);
+            std::vector<float> outputs = runInternal(image.data);
+            std::vector<float> expected(outputs.size(), 0.0);
 
             const int expectedLabel = static_cast<int>(image.label[0]);
 
             expected.at(expectedLabel) = 1.0;
 
-            std::vector<TMATH::Matrix_t<double>> deltas(_layers.size(), TMATH::Matrix_t<double>(0, 0));
-            TMATH::Matrix_t<double> outputDelta(outputs.size(), 1);
+            std::vector<TMATH::Matrix_t<float>> deltas(_layers.size(), TMATH::Matrix_t<float>(0, 0));
+            TMATH::Matrix_t<float> outputDelta(outputs.size(), 1);
             for (size_t i = 0; i < outputs.size(); ++i)
             {
                 outputDelta.at(i, 0) = expected[i] - outputs[i];
             }
             deltas.back() = outputDelta;
 
-            for (size_t l = _layers.size() - 1; l > 0; --l)
-            {
-                TMATH::Matrix_t<double> errorTerm = deltas[l].transpose() * weights[l];
-                TMATH::Matrix_t<double> derivatives = TMATH::sigmoid_derivative_matrix(_layers[l - 1].getActivations());
-                deltas[l - 1] = derivatives.elementWiseMultiplication(errorTerm.transpose());
-            }
-
             for (size_t l = _layers.size() - 1; l < _layers.size(); --l) 
             {
-                TMATH::Matrix_t<double> prevActivations = (l == 0) 
-                    ? TMATH::Matrix_t<double>(image.data) 
-                    : TMATH::Matrix_t<double>(_layers[l - 1].getActivations());
+                if (l != 0)
+                {
+                    TMATH::Matrix_t<float> errorTerm = deltas[l].transpose() * weights[l];
+                    TMATH::Matrix_t<float> derivatives = TMATH::sigmoid_derivative_matrix(_layers[l - 1].getActivations());
+                    deltas[l - 1] = derivatives.elementWiseMultiplication(errorTerm.transpose());
+                }
+
+                TMATH::Matrix_t<float> prevActivations = (l == 0) 
+                    ? TMATH::Matrix_t<float>(image.data) 
+                    : TMATH::Matrix_t<float>(_layers[l - 1].getActivations());
                 
-                TMATH::Matrix_t<double> gradient = deltas[l] * prevActivations.transpose();
+                TMATH::Matrix_t<float> gradient = deltas[l] * prevActivations.transpose();
             
                 weightGradients[l] += gradient;
                 biasGradients[l] += deltas[l];
-
-                if (debug && l == 0)
-                {
-                    std::cout << "Gradient(0,0): " << gradient.at(0, 0) 
-                              << " Delta(0): " << deltas[l].at(0, 0) 
-                              << " PrevActiv(0): " << prevActivations.at(0, 0) << std::endl;
-                }
             }
 
             getMostActive(outputs) == expectedLabel
@@ -245,14 +240,14 @@ namespace NTARS
             }
         }
 
-        double batchSize = static_cast<double>(miniBatch.size());
+        float batchSize = static_cast<float>(miniBatch.size());
         for (size_t l = 0; l < _layers.size(); ++l)
         {
             weights[l] += weightGradients[l] * (learningRate / batchSize);
             biases[l] += biasGradients[l] * (learningRate / batchSize);
         }
 
-        return (double)numCorrect / (double)(numCorrect + numWrong);
+        return (float)numCorrect / (float)(numCorrect + numWrong);
     }
 
 } // namespace NTARS

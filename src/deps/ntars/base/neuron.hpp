@@ -15,9 +15,9 @@ namespace NTARS
     public:
         Neuron() = default;
 
-        const double activate(const std::vector<double>& inputs, const std::vector<double>& weights, const double bias)
+        const float activate(const std::vector<float>& inputs, const std::vector<float>& weights, const float bias)
         {
-            double sum{0.0};
+            float sum{0.0};
 
             for (size_t i = 0; i < weights.size(); ++i)
             {
@@ -30,10 +30,10 @@ namespace NTARS
             return activation;
         }
 
-        inline double getActivation() const  { return activation; }
+        inline float getActivation() const  { return activation; }
 
     private:
-        double activation{0};
+        float activation{0};
     };
 } // namespace NTARS
 

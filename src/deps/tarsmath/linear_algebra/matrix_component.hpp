@@ -6,6 +6,7 @@
 #include <array>
 #include <vector>
 #include <assert.h>
+#include <stdexcept>
 
 namespace TMATH
 {
@@ -25,16 +26,27 @@ namespace TMATH
         Matrix_t(const std::vector<std::vector<T>>& elements)
             : elements_(elements), rows_(elements.size()), cols_(elements[0].size()) {}
 
+        Matrix_t(const std::vector<T>& flatElements, size_t rows, size_t cols)
+            : rows_(rows), cols_(cols), elements_(rows_, std::vector<T>(cols_)) 
+        {
+            if (flatElements.size() != rows_ * cols_) {
+                throw std::invalid_argument("Flat vector size does not match specified matrix dimensions.");
+            }
+            
+            for (size_t i = 0; i < flatElements.size(); ++i) {
+                elements_[i / cols_][i % cols_] = flatElements[i];
+            }
+        }
+
         Matrix_t(const std::vector<T>& elements)
             : rows_(elements.size()), cols_(1), elements_(rows_, std::vector<T>(1))
         {
-            for (size_t i = 0; i < rows_; ++i)
-            {
+            for (size_t i = 0; i < rows_; ++i) {
                 elements_[i][0] = elements[i];
             }
         }
 
-        const std::vector<std::vector<T>>& getElementsRaw() const { return elements_; }
+        std::vector<std::vector<T>>& getElementsRaw() { return elements_; }
 
         inline T& at(size_t row, size_t col)
         {
@@ -223,7 +235,34 @@ namespace TMATH
         
             return result;
         }
+        
+        std::vector<T> flat() const
+        {
+            std::vector<T> flattened(rows_ * cols_);
 
+            size_t index{0};
+            for (const auto& row : elements_)
+            {
+                for (const auto& element : row)
+                {
+                    flattened[index] = element;
+                    index++;
+                }
+            }
+            
+            return flattened;
+        }
+
+        std::vector<T> transposeFlat() const {
+            std::vector<T> transposedData(rows_ * cols_);
+            for (size_t i = 0; i < rows_; ++i) {
+                for (size_t j = 0; j < cols_; ++j) {
+                    transposedData[j * rows_ + i] = at(i, j);  
+                }
+            }
+            return transposedData;
+        }
+              
     private:
         size_t rows_, cols_;
         std::vector<std::vector<T>> elements_;

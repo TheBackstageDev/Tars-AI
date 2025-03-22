@@ -21,7 +21,7 @@ namespace NTARS
             }
         }
         
-        std::vector<double>& forward(const std::vector<double>& inputs, const TMATH::Matrix_t<double>& weights, const TMATH::Matrix_t<double>& biases)
+        std::vector<float>& forward(const std::vector<float>& inputs, const TMATH::Matrix_t<float>& weights, const TMATH::Matrix_t<float>& biases)
         {
             for (size_t i = 0; i < numNeurons; ++i)
             {
@@ -34,12 +34,12 @@ namespace NTARS
         inline size_t getNumOutputs() const { return numNeurons; }
         inline Neuron& getNeuron(size_t index) { return _neurons.at(index); }
         inline std::vector<Neuron>& getNeurons() { return _neurons; }
-        inline std::vector<double> getActivations() const { return _activations; }
+        inline std::vector<float> getActivations() const { return _activations; }
 
     private:
         size_t numNeurons;
         size_t numInputs;
-        std::vector<double> _activations;
+        std::vector<float> _activations;
         std::vector<Neuron> _neurons;
     };
     

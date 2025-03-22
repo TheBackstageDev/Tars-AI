@@ -7,19 +7,19 @@
 
 namespace TMATH
 {
-    inline double sigmoid(double x)
+    inline float sigmoid(float x)
     {
         return 1.0 / (1.0 + std::exp(-x));
     }
 
-    inline double sigmoid_derivative(double x)
+    inline float sigmoid_derivative(float x)
     {
         return sigmoid(x) * (1.0 - sigmoid(x));
     }
 
-    inline std::vector<double> sigmoid_derivative(std::vector<double> x)
+    inline std::vector<float> sigmoid_derivative(std::vector<float> x)
     {
-        std::vector<double> derivatives(x.size(), 0.0);
+        std::vector<float> derivatives(x.size(), 0.0);
         
         for (size_t i = 0; i < x.size(); ++i)
         {
@@ -29,9 +29,9 @@ namespace TMATH
         return derivatives;
     }
 
-    inline TMATH::Matrix_t<double> sigmoid_derivative_matrix(std::vector<double> x)
+    inline TMATH::Matrix_t<float> sigmoid_derivative_matrix(std::vector<float> x)
     {
-        TMATH::Matrix_t<double> derivatives(x.size(), 1);
+        TMATH::Matrix_t<float> derivatives(x.size(), 1);
 
         for (size_t i = 0; i < x.size(); ++i)
         {
@@ -41,9 +41,9 @@ namespace TMATH
         return derivatives;
     }
 
-    inline TMATH::Matrix_t<double> sigmoid_derivative_matrix(TMATH::Matrix_t<double> x)
+    inline TMATH::Matrix_t<float> sigmoid_derivative_matrix(TMATH::Matrix_t<float> x)
     {
-        TMATH::Matrix_t<double> derivatives(x.rows(), x.cols());
+        TMATH::Matrix_t<float> derivatives(x.rows(), x.cols());
 
         for (size_t i = 0; i < x.rows(); ++i)
         {
