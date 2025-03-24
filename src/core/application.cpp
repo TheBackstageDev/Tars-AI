@@ -15,14 +15,14 @@
 
 void NeuralNetworkTrain()
 {
-    NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
-    //NTARS::DenseNeuralNetwork network{"TARS.json"};
+    //NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
+    NTARS::DenseNeuralNetwork network{"TARS.json"};
     mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset =
         mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
 
     std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
-    const size_t batch_size = 500;
+    const size_t batch_size = 1000;
     const float learningRate = 0.1;
 
     const auto& data = dataset.training_images;

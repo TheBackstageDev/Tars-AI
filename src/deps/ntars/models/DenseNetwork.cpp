@@ -52,13 +52,17 @@ namespace NTARS
                 biases.clear();
                 for (const auto& biasMatrix : loaded["biases"])
                 {
-                    biases.emplace_back(TMATH::Matrix_t(biasMatrix.get<std::vector<std::vector<float>>>()));
+                    auto mat = biasMatrix.get<std::vector<float>>();
+                    biases.emplace_back(TMATH::Matrix_t<float>(mat, mat.size(), 1));
                 }
 
                 weights.clear();
-                for (const auto& weightMatrix : loaded["weights"])
+                for (const auto& weightJson : loaded["weights"])
                 {
-                    weights.emplace_back(TMATH::Matrix_t(weightMatrix.get<std::vector<std::vector<float>>>()));
+                    auto data = weightJson["data"].get<std::vector<float>>(); 
+                    size_t rows = weightJson["rows"].get<size_t>();         
+                    size_t cols = weightJson["cols"].get<size_t>();    
+                    weights.emplace_back(TMATH::Matrix_t<float>(data, rows, cols));
                 }
 
                 _structure = loaded["structure"].get<std::vector<size_t>>();
@@ -150,9 +154,13 @@ namespace NTARS
         saved["structure"] = _structure;
         saved["name"] = name;
         
-        for (auto& weightMatrix : weights)
+        for (const auto& weightMatrix : weights)
         {
-            saved["weights"].push_back(weightMatrix.getElementsRaw());
+            nlohmann::json weightJson;
+            weightJson["data"] = weightMatrix.getElementsRaw();
+            weightJson["rows"] = weightMatrix.rows();      
+            weightJson["cols"] = weightMatrix.cols();          
+            saved["weights"].push_back(weightJson);
         }
 
         for (auto& biasMatrix : biases)
@@ -222,8 +230,8 @@ namespace NTARS
                 }
 
                 TMATH::Matrix_t<float> prevActivations = (l == 0) 
-                    ? TMATH::Matrix_t<float>(image.data) 
-                    : TMATH::Matrix_t<float>(_layers[l - 1].getActivations());
+                    ? TMATH::Matrix_t<float>(image.data, image.data.size(), 1) 
+                    : TMATH::Matrix_t<float>(_layers[l - 1].getActivations(), _layers[l - 1].getActivations().size(), 1);      
                 
                 TMATH::Matrix_t<float> gradient = deltas[l] * prevActivations.transpose();
             

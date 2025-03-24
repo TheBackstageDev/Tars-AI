@@ -15,61 +15,63 @@ namespace TMATH
     {
     public:
         Matrix_t(size_t rows, size_t cols)
-            : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols)) {}
+            : rows_(rows), cols_(cols), elements_(rows * cols) {}
 
         Matrix_t(size_t size)
-            : rows_(size), cols_(size), elements_(size, std::vector<T>(size)) {}
+            : rows_(size), cols_(size), elements_(size * size) {}
 
         Matrix_t(const T& x, size_t rows, size_t cols)
-            : rows_(rows), cols_(cols), elements_(rows, std::vector<T>(cols, x)) {}
-
-        Matrix_t(const std::vector<std::vector<T>>& elements)
-            : elements_(elements), rows_(elements.size()), cols_(elements[0].size()) {}
-
-        Matrix_t(const std::vector<T>& flatElements, size_t rows, size_t cols)
-            : rows_(rows), cols_(cols), elements_(rows_, std::vector<T>(cols_)) 
+            : rows_(rows), cols_(cols), elements_(rows * cols, x)
         {
-            if (flatElements.size() != rows_ * cols_) {
-                throw std::invalid_argument("Flat vector size does not match specified matrix dimensions.");
+            for(size_t i = 0; i < rows; ++i)
+            {
+                rowAt(i)[0] = x;
             }
+        }
             
-            for (size_t i = 0; i < flatElements.size(); ++i) {
-                elements_[i / cols_][i % cols_] = flatElements[i];
-            }
-        }
-
-        Matrix_t(const std::vector<T>& elements)
-            : rows_(elements.size()), cols_(1), elements_(rows_, std::vector<T>(1))
+        Matrix_t(const std::vector<T>& elements, size_t rows, size_t cols)
+            : rows_(rows), cols_(cols), elements_(elements) 
         {
-            for (size_t i = 0; i < rows_; ++i) {
-                elements_[i][0] = elements[i];
-            }
+            assert(rows * cols == elements.size() && "Provided elements size does not match matrix dimensions");
         }
-
-        std::vector<std::vector<T>>& getElementsRaw() { return elements_; }
+        
+        std::vector<T>& getElementsRaw() { return elements_; }
+        std::vector<T> getElementsRaw() const { return elements_; }
 
         inline T& at(size_t row, size_t col)
         {
             assert((row < rows_ && col < cols_) && "Matrix Index out of bounds");
-            return elements_[row][col];
+            return elements_[row * cols_ + col];
         }
     
         inline const T& at(size_t row, size_t col) const
         {
             assert((row < rows_ && col < cols_) && "Matrix Index out of bounds");
-            return elements_[row][col];
+            return elements_[row * cols_ + col];
         }
 
-        inline std::vector<T>& rowAt(size_t row)
+        inline std::vector<T> rowAt(size_t row)
         {
-            assert((row < rows_ ) && "Matrix Row Index out of bounds");
-            return elements_[row];
+            assert((row < rows_) && "Matrix Row Index out of bounds");
+            
+            std::vector<T> rowElements(cols_);
+            for (size_t col = 0; col < cols_; ++col)
+            {
+                rowElements[col] = elements_[row * cols_ + col];
+            }
+            return rowElements;
         }
 
-        inline const std::vector<T>& rowAt(size_t row) const
+        inline std::vector<T> rowAt(size_t row) const
         {
-            assert((row < rows_ ) && "Matrix Row Index out of bounds");
-            return elements_[row];
+            assert((row < rows_) && "Matrix Row Index out of bounds");
+            
+            std::vector<T> rowElements(cols_);
+            for (size_t col = 0; col < cols_; ++col)
+            {
+                rowElements[col] = elements_[row * cols_ + col];
+            }
+            return rowElements;
         }
 
         inline size_t rows() const {
@@ -84,15 +86,14 @@ namespace TMATH
                 return false;
             }
 
-            for (size_t i = 0; i < rows_; ++i) {
-                for (size_t j = 0; j < cols_; ++j) {
-                    if (elements_[i][j] != other.elements_[i][j]) {
-                        return false;
-                    }
-                }
+            for (size_t i = 0; i < rows_ * cols_; ++i) {
+                if (elements_[i] != other.elements_[i])
+                    return false;
             }
+
             return true;
         }
+
         constexpr bool operator!=(const Matrix_t<T>& other) const {
             return !(*this == other);
         }
@@ -100,14 +101,10 @@ namespace TMATH
         Matrix_t<T> operator+(const Matrix_t<T>& other) const
         {
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for addition");
-    
             Matrix_t<T> result(rows_, cols_);
-            for (size_t i = 0; i < rows_; ++i)
+            for (size_t i = 0; i < elements_.size(); ++i)
             {
-                for (size_t j = 0; j < cols_; ++j)
-                {
-                    result.at(i, j) = elements_[i][j] + other.at(i, j);
-                }
+                result.elements_[i] = elements_[i] + other.elements_[i];
             }
             return result;
         }
@@ -116,43 +113,42 @@ namespace TMATH
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for subtraction");
     
             Matrix_t<T> result(rows_, cols_);
-            for (size_t i = 0; i < rows_; ++i)
+            for (size_t i = 0; i < elements_.size(); ++i)
             {
-                for (size_t j = 0; j < cols_; ++j)
-                {
-                    result.at(i, j) = elements_[i][j] - other.at(i, j);
-                }
+                result.elements_[i] = elements_[i] - other.elements_[i];
             }
             return result;
         }
         Matrix_t<T> operator*(const Matrix_t<T>& other) const
         {
             assert(cols_ == other.rows() && "Matrix multiplication requires the number of columns in the first matrix to be equal to the number of rows in the second matrix");
-    
+
             Matrix_t<T> result(rows_, other.cols());
+
             for (size_t i = 0; i < rows_; ++i)
             {
                 for (size_t j = 0; j < other.cols(); ++j)
                 {
-                    result.at(i, j) = T{};
+                    T sum = T{};
                     for (size_t k = 0; k < cols_; ++k)
                     {
-                        result.at(i, j) += elements_[i][k] * other.at(k, j);
+                        sum += at(i, k) * other.at(k, j);
                     }
+                    result.at(i, j) = sum;
                 }
             }
             return result;
-        }    
+        }
         Matrix_t<T> operator/(const Matrix_t<T>& other) const
         {
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for division");
-    
+        
             Matrix_t<T> result(rows_, cols_);
             for (size_t i = 0; i < rows_; ++i)
             {
                 for (size_t j = 0; j < cols_; ++j)
                 {
-                    result.at(i, j) = elements_[i][j] / other.at(i, j);
+                    result.at(i, j) = at(i, j) / other.at(i, j);
                 }
             }
             return result;
@@ -164,7 +160,7 @@ namespace TMATH
             {
                 for (size_t j = 0; j < cols_; ++j)
                 {
-                    result.at(i, j) = elements_[i][j] * scalar;
+                    result.at(i, j) = at(i, j) * scalar;
                 }
             }
             return result;
@@ -176,7 +172,7 @@ namespace TMATH
             {
                 for (size_t j = 0; j < cols_; ++j)
                 {
-                    result.at(i, j) = elements_[i][j] / scalar;
+                    result.at(i, j) = at(i, j) / scalar;
                 }
             }
             return result;
@@ -188,7 +184,7 @@ namespace TMATH
             {
                 for (size_t j = 0; j < cols_; ++j)
                 {
-                    result.at(j, i) = elements_[i][j];
+                    result.at(j, i) = at(i, j);
                 }
             }
             return result;
@@ -202,7 +198,7 @@ namespace TMATH
             {
                 for (size_t j = 0; j < cols_; ++j)
                 {
-                    elements_[i][j] += other.at(i, j);
+                    at(i, j) += other.at(i, j);
                 }
             }
             return *this;
@@ -215,7 +211,7 @@ namespace TMATH
             {
                 for (size_t j = 0; j < cols_; ++j)
                 {
-                    elements_[i][j] -= other.at(i, j);
+                    at(i, j) -= other.at(i, j);
                 }
             }
             return *this;
@@ -229,43 +225,16 @@ namespace TMATH
             {
                 for (size_t col = 0; col < cols_; ++col)
                 {
-                    result.at(row, col) = elements_[row][col] * otherMatrix.at(row, col);
+                    result.at(row, col) = at(row, col) * otherMatrix.at(row, col);
                 }
             }
         
             return result;
         }
-        
-        std::vector<T> flat() const
-        {
-            std::vector<T> flattened(rows_ * cols_);
-
-            size_t index{0};
-            for (const auto& row : elements_)
-            {
-                for (const auto& element : row)
-                {
-                    flattened[index] = element;
-                    index++;
-                }
-            }
-            
-            return flattened;
-        }
-
-        std::vector<T> transposeFlat() const {
-            std::vector<T> transposedData(rows_ * cols_);
-            for (size_t i = 0; i < rows_; ++i) {
-                for (size_t j = 0; j < cols_; ++j) {
-                    transposedData[j * rows_ + i] = at(i, j);  
-                }
-            }
-            return transposedData;
-        }
               
     private:
         size_t rows_, cols_;
-        std::vector<std::vector<T>> elements_;
+        std::vector<T> elements_;
     };
     struct Matrix2x2
     {

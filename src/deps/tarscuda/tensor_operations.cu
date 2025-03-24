@@ -21,7 +21,8 @@ namespace TCUDA
         }
     }
 
-/*  uses Cuda Cores   bool matrixMultiply(double* x, double* y, double* result, int rowsX, int colsX, int colsY) 
+/*  uses Cuda Cores  
+ bool matrixMultiply(double* x, double* y, double* result, int rowsX, int colsX, int colsY) 
     {
         double *d_x, *d_y, *d_result;
         size_t sizeX = rowsX * colsX * sizeof(double);
@@ -53,6 +54,7 @@ namespace TCUDA
     
         return true; 
     } */
+
     bool matrixMultiply(float* x, float* y, float* result, int rowsX, int colsX, int colsY, bool transposeX, bool transposeY) 
     {
         float *d_a, *d_b, *d_result;
