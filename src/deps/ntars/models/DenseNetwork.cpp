@@ -23,6 +23,7 @@ namespace NTARS
     {
         initializeWeightsAndBiases(structure);
         createLayers(structure);
+        initializeTrainingBuffers();
     }
 
     DenseNeuralNetwork::DenseNeuralNetwork(const std::string& file)
@@ -78,6 +79,24 @@ namespace NTARS
         catch(std::exception e)
         {
             std::cerr << e.what() << std::endl;
+        }
+
+        initializeTrainingBuffers();
+    }
+
+    DenseNeuralNetwork::~DenseNeuralNetwork()
+    {
+    } 
+
+    void DenseNeuralNetwork::initializeTrainingBuffers()
+    {
+        deltas.clear();
+        weightGradients.clear();
+        biasGradients.clear();
+        for (size_t l = 0; l < _layers.size(); ++l) {
+            deltas.emplace_back(TMATH::Matrix_t<float>(weights[l].rows(), weights[l].cols()));
+            weightGradients.emplace_back(TMATH::Matrix_t<float>(weights[l].rows(), weights[l].cols()));
+            biasGradients.emplace_back(TMATH::Matrix_t<float>(biases[l].rows(), 1));
         }
     }
 
@@ -189,13 +208,10 @@ namespace NTARS
         }
     }
 
-    float DenseNeuralNetwork::train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate)
+    float DenseNeuralNetwork::train(NTARS::DATA::TrainingData<std::vector<float>>& miniBatch, float learningRate)
     {
         int numCorrect{0};
         int numWrong{0};
-
-        std::vector<TMATH::Matrix_t<float>> weightGradients(_layers.size(), TMATH::Matrix_t<float>(0, 0));
-        std::vector<TMATH::Matrix_t<float>> biasGradients(_layers.size(), TMATH::Matrix_t<float>(0, 1));
 
         for (size_t l = 0; l < _layers.size(); ++l)
         {
@@ -203,49 +219,44 @@ namespace NTARS
             biasGradients[l] = TMATH::Matrix_t<float>(biases[l].rows(), 1);
         }
         
-        for (auto& image : miniBatch)
+        std::vector<float> outputs = runInternal(image.data);
+        std::vector<float> expected(outputs.size(), 0.0);
+
+        const int expectedLabel = static_cast<int>(image.label[0]);
+        expected.at(expectedLabel) = 1.0;
+
+        TMATH::Matrix_t<float> outputDelta(outputs.size(), 1);
+        for (size_t i = 0; i < outputs.size(); ++i)
         {
-            std::vector<float> outputs = runInternal(image.data);
-            std::vector<float> expected(outputs.size(), 0.0);
+            outputDelta.at(i, 0) = expected[i] - outputs[i];
+        }
+        deltas.back() = outputDelta;
 
-            const int expectedLabel = static_cast<int>(image.label[0]);
-
-            expected.at(expectedLabel) = 1.0;
-
-            std::vector<TMATH::Matrix_t<float>> deltas(_layers.size(), TMATH::Matrix_t<float>(0, 0));
-            TMATH::Matrix_t<float> outputDelta(outputs.size(), 1);
-            for (size_t i = 0; i < outputs.size(); ++i)
+        for (size_t l = _layers.size() - 1; l < _layers.size(); --l) 
+        {
+            if (l != 0)
             {
-                outputDelta.at(i, 0) = expected[i] - outputs[i];
+                TMATH::Matrix_t<float> errorTerm = deltas[l].transpose() * weights[l];
+                TMATH::Matrix_t<float> derivatives = TMATH::sigmoid_derivative_matrix(_layers[l - 1].getActivations());
+                deltas[l - 1] = derivatives.elementWiseMultiplication(errorTerm.transpose());
             }
-            deltas.back() = outputDelta;
 
-            for (size_t l = _layers.size() - 1; l < _layers.size(); --l) 
-            {
-                if (l != 0)
-                {
-                    TMATH::Matrix_t<float> errorTerm = deltas[l].transpose() * weights[l];
-                    TMATH::Matrix_t<float> derivatives = TMATH::sigmoid_derivative_matrix(_layers[l - 1].getActivations());
-                    deltas[l - 1] = derivatives.elementWiseMultiplication(errorTerm.transpose());
-                }
-
-                TMATH::Matrix_t<float> prevActivations = (l == 0) 
-                    ? TMATH::Matrix_t<float>(image.data, image.data.size(), 1) 
-                    : TMATH::Matrix_t<float>(_layers[l - 1].getActivations(), _layers[l - 1].getActivations().size(), 1);      
-                
-                TMATH::Matrix_t<float> gradient = deltas[l] * prevActivations.transpose();
+            TMATH::Matrix_t<float> prevActivations = (l == 0) 
+                ? TMATH::Matrix_t<float>(image.data, image.data.size(), 1) 
+                : TMATH::Matrix_t<float>(_layers[l - 1].getActivations(), _layers[l - 1].getActivations().size(), 1);      
             
-                weightGradients[l] += gradient;
-                biasGradients[l] += deltas[l];
-            }
+            TMATH::Matrix_t<float> gradient = deltas[l] * prevActivations.transpose();
+        
+            weightGradients[l] += gradient;
+            biasGradients[l] += deltas[l];
+        }
 
-            getMostActive(outputs) == expectedLabel
-            ? ++numCorrect : ++numWrong;
+        getMostActive(outputs) == expectedLabel
+        ? ++numCorrect : ++numWrong;
 
-            if (debug)
-            {
-                std::cout << "Current Cost: " + std::to_string(cost(outputs, expected)) << std::endl;
-            }
+        if (debug)
+        {
+            std::cout << "Current Cost: " + std::to_string(cost(outputs, expected)) << std::endl;
         }
 
         float batchSize = static_cast<float>(miniBatch.size());

@@ -17,6 +17,8 @@ namespace NTARS
         DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name);
         DenseNeuralNetwork(const std::string& file);
 
+        ~DenseNeuralNetwork();
+
         uint32_t run(const std::vector<float>& inputs);
 
         float train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
@@ -27,6 +29,7 @@ namespace NTARS
         inline std::vector<DenseLayer>& getLayers() { return _layers; }
     private:
         void initializeWeightsAndBiases(const std::vector<size_t>& structure);
+        void initializeTrainingBuffers();
         void createLayers(const std::vector<size_t>& structure);
 
         constexpr uint32_t getMostActive(const std::vector<float>& outputs) const
@@ -48,6 +51,11 @@ namespace NTARS
 
         std::vector<DenseLayer> _layers;
         std::vector<size_t> _structure;
+
+        // Training Buffers
+        std::vector<TMATH::Matrix_t<float>> deltas;
+        std::vector<TMATH::Matrix_t<float>> weightGradients;
+        std::vector<TMATH::Matrix_t<float>> biasGradients;
     };
     
 } // namespace NTARS

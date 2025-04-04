@@ -8,16 +8,14 @@ namespace TCUDA
     inline void CUDA_CHECK(cudaError_t cudaStatus) 
     {
         if (cudaStatus != cudaSuccess) {
-            fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(cudaStatus));
-            throw std::runtime_error("CUDA error");
+            throw fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(cudaStatus));
         }
     }
 
     inline void CUBLAS_CHECK(cublasStatus_t cublasStatus) 
     {
         if (cublasStatus != CUBLAS_STATUS_SUCCESS) {
-            fprintf(stderr, "CUBLAS error: %d\n", cublasStatus);
-            exit(-1);
+            throw fprintf(stderr, "CUBLAS error: %d\n", cublasStatus);
         }
     }
 
@@ -55,13 +53,26 @@ namespace TCUDA
         return true; 
     } */
 
+    void swapValue(int& val1, int& val2)
+    {
+        int temp = val1;
+        val1 = val2;
+        val2 = temp;
+    }
+
     bool matrixMultiply(float* x, float* y, float* result, int rowsX, int colsX, int colsY, bool transposeX, bool transposeY) 
     {
         float *d_a, *d_b, *d_result;
 
-        // scalar coefficients
-        const float alpha = 1.0;
-        const float beta = 0.0;
+        const float alpha = 1.0; // Scalar multiplier for matrix multiplication
+        const float beta = 0.0;  // Scalar multiplier for initial values in result
+
+        if (transposeX) {
+            swapValue(rowsX, colsX);
+        }
+        if (transposeY) {
+            swapValue(colsX, colsY);
+        }
 
         size_t sizeX = rowsX * colsX * sizeof(float);
         size_t sizeY = colsX * colsY * sizeof(float);
@@ -97,49 +108,41 @@ namespace TCUDA
         return true;
     }
 
-    bool matrixMultiply(std::vector<std::vector<float>>& matrixA, std::vector<std::vector<float>>& matrixB,  std::vector<std::vector<float>>* resultMatrix, bool transposeX, bool transposeY)
-    {
-        const float alpha = 1.0;
-        const float beta = 0.0;
-
-        size_t sizeX = matrixA.size() * matrixA[0].size() * sizeof(float);
-        size_t sizeY =  matrixA[0].size() * matrixB[0].size() * sizeof(float);
-        size_t sizeResult = matrixA.size() * matrixB[0].size() * sizeof(float);
-
-        return false;
-    }
-
-    __global__ void matrixElementWiseMultiplyKernel(const float* x, const float* y, float* result, size_t size)
-    {
-        size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < size) {
-            result[idx] = x[idx] * y[idx];
-        }
-    }
-    
     bool matrixElementWiseMultiply(float* x, float* y, float* result, size_t size)
     {
-        float *d_x, *d_y, *d_result;
+        float *d_a, *d_b, *d_result;
     
         size_t dataSize = size * sizeof(float);
     
-        CUDA_CHECK(cudaMalloc(&d_x, dataSize));
-        CUDA_CHECK(cudaMalloc(&d_y, dataSize));
+        CUDA_CHECK(cudaMalloc(&d_a, dataSize));
+        CUDA_CHECK(cudaMalloc(&d_b, dataSize));
         CUDA_CHECK(cudaMalloc(&d_result, dataSize));
 
-        CUDA_CHECK(cudaMemcpy(d_x, x, dataSize, cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(d_y, y, dataSize, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(d_a, x, dataSize, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(d_b, y, dataSize, cudaMemcpyHostToDevice));
     
         dim3 blockDim(256); 
         dim3 gridDim((size + blockDim.x - 1) / blockDim.x); 
 
-        matrixElementWiseMultiplyKernel<<<gridDim, blockDim>>>(d_x, d_y, d_result, size);
+        cublasHandle_t cublasHandle;
+        CUBLAS_CHECK(cublasCreate(&cublasHandle));
+
+        CUBLAS_CHECK(cublasSdgmm(
+            cublasHandle,                          // cuBLAS handle
+            CUBLAS_SIDE_LEFT,                      // Side mode (LEFT means x is the diagonal matrix)
+            size,                                  // Number of rows in the matrix
+            1,                                     // Number of columns in the matrix
+            d_b, size,                             // Input matrix y (column vector)
+            d_a, 1,                                // Input vector x (diagonal-like input)
+            d_result, size                         // Resulting output matrix
+        ));
 
         CUDA_CHECK(cudaMemcpy(result, d_result, dataSize, cudaMemcpyDeviceToHost));
 
-        CUDA_CHECK(cudaFree(d_x));
-        CUDA_CHECK(cudaFree(d_y));
+        CUDA_CHECK(cudaFree(d_a));
+        CUDA_CHECK(cudaFree(d_b));
         CUDA_CHECK(cudaFree(d_result));
+        CUBLAS_CHECK(cublasDestroy(cublasHandle));
     
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {

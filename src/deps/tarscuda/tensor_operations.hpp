@@ -10,7 +10,6 @@
 namespace TCUDA
 {
     bool matrixMultiply(float* x, float* y, float* result, int rowsX, int colsX, int colsY, bool transposeX = false, bool transposeY = false);
-    bool matrixMultiply(std::vector<std::vector<float>>& matrixA, std::vector<std::vector<float>>& matrixB, std::vector<std::vector<float>>* resultMatrix, bool transposeX = false, bool transposeY = false);
     bool matrixElementWiseMultiply(float* x, float* y, float* result, size_t size);
 } // namespace TCUDA
 

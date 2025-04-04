@@ -38,6 +38,9 @@ namespace TMATH
         std::vector<T>& getElementsRaw() { return elements_; }
         std::vector<T> getElementsRaw() const { return elements_; }
 
+        T* data() { return elements_.data(); }
+        const T* data() const { return elements_.data(); }
+
         inline T& at(size_t row, size_t col)
         {
             assert((row < rows_ && col < cols_) && "Matrix Index out of bounds");
