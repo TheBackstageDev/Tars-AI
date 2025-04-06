@@ -156,7 +156,31 @@ namespace TMATH
             }
             return result;
         }
-        Matrix_t<T> operator*(const T& scalar) const
+        Matrix_t<T> operator+(const float& scalar) const
+        {
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(i, j) = at(i, j) + scalar;
+                }
+            }
+            return result;
+        } 
+        Matrix_t<T> operator-(const float& scalar) const
+        {
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t i = 0; i < rows_; ++i)
+            {
+                for (size_t j = 0; j < cols_; ++j)
+                {
+                    result.at(i, j) = at(i, j) - scalar;
+                }
+            }
+            return result;
+        } 
+        Matrix_t<T> operator*(const float& scalar) const
         {
             Matrix_t<T> result(rows_, cols_);
             for (size_t i = 0; i < rows_; ++i)
@@ -168,7 +192,7 @@ namespace TMATH
             }
             return result;
         } 
-        Matrix_t<T> operator/(const T& scalar) const
+        Matrix_t<T> operator/(const float& scalar) const
         {
             Matrix_t<T> result(rows_, cols_);
             for (size_t i = 0; i < rows_; ++i)
@@ -229,6 +253,36 @@ namespace TMATH
                 for (size_t col = 0; col < cols_; ++col)
                 {
                     result.at(row, col) = at(row, col) * otherMatrix.at(row, col);
+                }
+            }
+        
+            return result;
+        }
+
+        Matrix_t<T> elementWiseDivision(const Matrix_t<T>& otherMatrix) const
+        {
+            assert((rows_ == otherMatrix.rows_ && cols_ == otherMatrix.cols_) && "Matrix dimensions must agree for element-wise multiplication");
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t row = 0; row < rows_; ++row)
+            {
+                for (size_t col = 0; col < cols_; ++col)
+                {
+                    result.at(row, col) = at(row, col) / otherMatrix.at(row, col);
+                }
+            }
+        
+            return result;
+        }
+
+
+        Matrix_t<T> sqrt()
+        {
+            Matrix_t<T> result(rows_, cols_);
+            for (size_t row = 0; row < rows_; ++row)
+            {
+                for (size_t col = 0; col < cols_; ++col)
+                {
+                    result.at(row, col) = std::sqrt(at(row, col));
                 }
             }
         
