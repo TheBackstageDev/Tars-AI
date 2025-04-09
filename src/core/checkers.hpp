@@ -41,11 +41,14 @@ public:
 
         return x * board_size + y;
     }
+
 private:
     void initiateBoard();
     bool isQueen(uint32_t pieceIndex) { return std::abs(board_state[pieceIndex]) == 1; }
     bool isMoveLegal(uint32_t x, uint32_t y) { return x < board_size && y < board_size && board_state[x * board_size + y] == 0; }
+
     bool canCapture(uint32_t moveIndex, uint32_t currentIndex);
+    void checkCaptures(uint32_t pieceIndex, std::vector<uint32_t>& captures, int dir = -2);
 
     void drawPiece(ImDrawList* drawlist, const ImU32 color, const ImVec2 center, const uint32_t id);
     void drawCrown(ImDrawList* drawlist, const ImVec2 center);
