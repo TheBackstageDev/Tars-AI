@@ -46,7 +46,7 @@ std::string getHouse(int x, int y)
     return std::string(1, char('A' + x)) + std::to_string(8 - y);
 }
 
-float distance(const ImVec2 x0, const ImVec2 x1)
+float distance(ImVec2 x0, ImVec2 x1)
 {
     return sqrtf(powf(x1.x - x0.x, 2) + powf(x1.y - x0.y, 2));
 }
@@ -85,10 +85,7 @@ bool Checkers::canCapture(uint32_t moveIndex, uint32_t currentIndex)
     if (targetPiece == 0 || (currentPiece > 0 == targetPiece > 0))
         return false;
 
-    if (abs(moveX - currentX) == 2 && abs(moveY - currentY) == 2)
-        return true;
-
-    return false;
+    return abs(moveX - currentX) == 2 && abs(moveY - currentY) == 2;
 }
 
 void Checkers::checkCaptures(uint32_t pieceIndex, std::vector<uint32_t>& captures, int dir)
@@ -215,39 +212,50 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
     if (movePiece != 0 || currentPiece == 0)
         return;
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && std::find(movesPossibleCurrentPiece.first.begin(), movesPossibleCurrentPiece.first.end(), moveIndex) != movesPossibleCurrentPiece.first.end())
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) 
+    && std::find(movesPossibleCurrentPiece.first.begin(), movesPossibleCurrentPiece.first.end(), moveIndex) != movesPossibleCurrentPiece.first.end())
     {
         movePiece = currentPiece;
         currentPiece = 0;
         actionHappened = true;
     }
-    else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && std::find(movesPossibleCurrentPiece.second.begin(), movesPossibleCurrentPiece.second.end(), moveIndex) != movesPossibleCurrentPiece.second.end())
+    else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) 
+    && std::find(movesPossibleCurrentPiece.second.begin(), movesPossibleCurrentPiece.second.end(), moveIndex) != movesPossibleCurrentPiece.second.end())
     {
         movePiece = currentPiece;
         currentPiece = 0;
 
-        uint32_t midIndex = ((pieceIndex / board_size + moveIndex / board_size) / 2) * board_size + ((pieceIndex % board_size + moveIndex % board_size) / 2);
+        int currentX = pieceIndex / board_size;
+        int currentY = pieceIndex % board_size;
+        int moveX = moveIndex / board_size;
+        int moveY = moveIndex % board_size;
 
-        board_state[midIndex] = 0;
+        int32_t dist = distance(ImVec2(currentX, currentY), ImVec2(moveX, moveY));
+        
+        if (dist > 2)
+        {
+            std::vector<uint32_t> captures = movesPossibleCurrentPiece.second;
+            uint32_t currentCaptureIndex = pieceIndex;
+
+            while (!captures.empty() && currentCaptureIndex != moveIndex)
+            {
+                uint32_t nextMove = captures.front();
+                captures.erase(captures.begin()); 
+
+                uint32_t midIndex = getMiddle(currentCaptureIndex, nextMove);
+                board_state[midIndex] = 0; 
+        
+                currentCaptureIndex = nextMove; 
+
+                checkCaptures(currentCaptureIndex, captures);
+            }
+        }
+        else
+        {
+            board_state[getMiddle(pieceIndex, moveIndex)] = 0;
+        }
 
         actionHappened = true;
-
-        std::vector<uint32_t> nextCaptures;
-        checkCaptures(moveIndex, nextCaptures);
-    
-        while (!nextCaptures.empty()) 
-        {
-            uint32_t nextMove = nextCaptures.front();
-            nextCaptures.erase(nextCaptures.begin());
-    
-            uint32_t nextMidIndex = ((moveIndex / board_size + nextMove / board_size) / 2) * board_size +
-                                    ((moveIndex % board_size + nextMove % board_size) / 2);
-            
-            board_state[nextMidIndex] = 0;
-            moveIndex = nextMove; 
-            
-            checkCaptures(moveIndex, nextCaptures);
-        }
     }
 
     if (actionHappened)

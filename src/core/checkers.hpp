@@ -49,6 +49,11 @@ private:
 
     bool canCapture(uint32_t moveIndex, uint32_t currentIndex);
     void checkCaptures(uint32_t pieceIndex, std::vector<uint32_t>& captures, int dir = -2);
+    uint32_t getMiddle(uint32_t index1, uint32_t index2)
+    {
+        return (index1 + index2) / (board_size * 2) * board_size + ((index1 % board_size + index2 % board_size) / 2);
+    }
+
 
     void drawPiece(ImDrawList* drawlist, const ImU32 color, const ImVec2 center, const uint32_t id);
     void drawCrown(ImDrawList* drawlist, const ImVec2 center);
