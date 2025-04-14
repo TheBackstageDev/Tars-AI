@@ -30,7 +30,7 @@ void Checkers::initiateBoard()
             {
                 if (y < board_size / 2 - 1)
                 {
-                    board_state[index] = 0.5;
+                    board_state[index] = 1.0;
                 }
                 else if (y > board_size / 2)
                 {
@@ -62,58 +62,87 @@ bool isClicked(const ImVec2 center, const float tile_size)
     return false;
 }
 
-bool Checkers::canCapture(uint32_t moveIndex, uint32_t currentIndex)
+bool Checkers::canCapture(uint32_t pieceIndex, uint32_t moveIndex, bool pieceOwner)
 {
-    int currentX = currentIndex / board_size;
-    int currentY = currentIndex % board_size;
-    int moveX = moveIndex / board_size;
-    int moveY = moveIndex % board_size;
+    int32_t moveX = moveIndex / board_size;
+    int32_t moveY = moveIndex % board_size;
 
     if (!isMoveLegal(moveX, moveY))
         return false;
 
-    if (board_state[moveIndex] != 0)
-        return false;
-
-    int midX = (currentX + moveX) / 2;
-    int midY = (currentY + moveY) / 2;
+    int32_t currentX = pieceIndex / board_size;
+    int32_t currentY = pieceIndex % board_size;
+    int32_t midX = (currentX + moveX) / 2;
+    int32_t midY = (currentY + moveY) / 2;
     uint32_t midIndex = midX * board_size + midY;
 
-    float currentPiece = board_state[currentIndex];
+    float currentPiece = board_state[pieceIndex];
     float targetPiece = board_state[midIndex];
 
-    if (targetPiece == 0 || (currentPiece > 0 == targetPiece > 0))
+    if (targetPiece == 0 || (targetPiece > 0 == pieceOwner))
         return false;
 
     return abs(moveX - currentX) == 2 && abs(moveY - currentY) == 2;
 }
 
-void Checkers::checkCaptures(uint32_t pieceIndex, std::vector<uint32_t>& captures, int dir)
+void Checkers::checkCaptures(uint32_t pieceIndex, std::vector<uint32_t> &captures, int dir, int32_t pieceOwner)
 {
-    int currentX = pieceIndex / board_size;
-    int currentY = pieceIndex % board_size;
+    int32_t currentX = pieceIndex / board_size;
+    int32_t currentY = pieceIndex % board_size;
     float piece = board_state[pieceIndex];
+    bool pieceOwner1 = pieceOwner > 0 ? pieceOwner : piece > 0;
 
-    const int direction = dir == -2 ? piece < 0 ? -1 : 1 : dir; // Plr moves up while Bot moves down;
+    const int32_t direction = dir == -2 ? piece < 0 ? -1 : 1 : dir; // Plr moves up while Bot moves down;
 
-    int leftJumpX = currentX - 2, leftJumpY = currentY + direction * 2;
-    int rightJumpX = currentX + 2, rightJumpY = currentY + direction * 2;
-
-    int32_t leftJumpIndex = leftJumpX * board_size + leftJumpY;
-    int32_t rightJumpIndex = rightJumpX * board_size + rightJumpY;
-
-    if (canCapture(leftJumpIndex, pieceIndex) && std::find(captures.begin(), captures.end(), leftJumpIndex) == captures.end())
+    if (isQueen(pieceIndex))
     {
-        captures.emplace_back(leftJumpIndex);
-        checkCaptures(leftJumpIndex, captures, direction);
-        checkCaptures(leftJumpIndex, captures, -direction);
+        const int32_t dx[] = {1, -1, 1, -1};
+        const int32_t dy[] = {1, 1, -1, -1};
+
+        for (int32_t d = 0; d < 4; ++d)
+        {
+            int32_t x = currentX, y = currentY;
+
+            while (isWithinBounds(x, y))
+            {
+                uint32_t newCurrentIndex = x * board_size + y;
+
+                int32_t jumpX = x + dx[d] * 2, jumpY = y + dy[d] * 2; 
+                uint32_t jumpIndex = jumpX * board_size + jumpY;
+    
+                if (canCapture(newCurrentIndex, jumpIndex, pieceOwner1))
+                    captures.emplace_back(jumpIndex); 
+
+                x += dx[d];
+                y += dy[d];
+            }
+        }
     }
-
-    if (canCapture(rightJumpIndex, pieceIndex) && std::find(captures.begin(), captures.end(), rightJumpIndex) == captures.end())
+    else
     {
-        captures.emplace_back(rightJumpIndex);
-        checkCaptures(rightJumpIndex, captures, direction);
-        checkCaptures(rightJumpIndex, captures, -direction);
+        const int32_t dx[] = {2, -2, 2, -2};
+        const int32_t dy[] = {2, 2, -2, -2};
+
+        for (int32_t d = 0; d < 4; ++d)
+        {
+            int32_t leftJumpX = currentX - dx[d], currentJumpY = currentY + direction * dy[d];
+            int32_t rightJumpX = currentX + dx[d];
+    
+            int32_t leftJumpIndex = leftJumpX * board_size + currentJumpY;
+            int32_t rightJumpIndex = rightJumpX * board_size + currentJumpY;
+
+            if (canCapture(pieceIndex, leftJumpIndex, pieceOwner1) && std::find(captures.begin(), captures.end(), leftJumpIndex) == captures.end())
+            {
+                captures.emplace_back(leftJumpIndex);
+                checkCaptures(leftJumpIndex, captures, direction, pieceOwner1);
+            }
+    
+            if (canCapture(pieceIndex, rightJumpIndex, pieceOwner1) && std::find(captures.begin(), captures.end(), rightJumpIndex) == captures.end())
+            {
+                captures.emplace_back(rightJumpIndex);
+                checkCaptures(rightJumpIndex, captures, direction, pieceOwner1);
+            }
+        }
     }
 }
 
@@ -126,7 +155,8 @@ std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossibleMov
     {
         for (int32_t y = 0; y < board_size; ++y)
         {
-            const float current_cell = board_state[x * board_size + y];
+            const uint32_t cellIndex = x * board_size + y;
+            const float current_cell = board_state[cellIndex];
             if (current_cell == 0)
                 continue;
 
@@ -136,25 +166,61 @@ std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossibleMov
             if (!bot_piece && !player)
                 continue;
 
-            const int direction = current_cell < 0 ? -1 : 1; // Plr moves up while Bot moves down;
-
-            int leftX = x + 1, leftY = y + direction;
-            int rightX = x - 1, rightY = y + direction;
-
-            int32_t leftIndex = leftX * board_size + leftY;
-            int32_t rightIndex = rightX * board_size + rightY;
-
-            if (isMoveLegal(leftX, leftY) && std::find(moves.begin(), moves.end(), leftIndex) == moves.end())
-                moves.emplace_back(leftIndex);
-
-            if (isMoveLegal(rightX, rightY) && std::find(moves.begin(), moves.end(), rightIndex) == moves.end())
-                moves.emplace_back(rightIndex);
-
-            checkCaptures(x * board_size + y, captures);
+            checkMoves(cellIndex, moves);
+            checkCaptures(cellIndex, captures);
         }
     }
 
     return std::pair(moves, captures);
+}
+
+void Checkers::checkMoves(uint32_t pieceIndex, std::vector<uint32_t> &moves, int dir)
+{
+    float piece = board_state[pieceIndex];
+
+    if (piece == 0)
+        return;
+
+    const int32_t direction = dir == -2 ? piece < 0 ? -1 : 1 : dir;
+
+    int32_t currentX = pieceIndex / board_size;
+    int32_t currentY = pieceIndex % board_size;
+    int32_t leftX = currentX + 1, leftY = currentY + direction;
+    int32_t rightX = currentX - 1, rightY = currentY + direction;
+
+    uint32_t leftIndex = leftX * board_size + leftY;
+    uint32_t rightIndex = rightX * board_size + rightY;
+
+    if (isQueen(pieceIndex))
+    {
+        const int32_t dx[] = {1, -1, 1, -1};
+        const int32_t dy[] = {1, 1, -1, -1};
+
+        for (int32_t d = 0; d < 4; ++d)
+        {
+            int32_t x = currentX, y = currentY;
+
+            while (true)
+            {
+                x += dx[d];
+                y += dy[d];
+
+                if (!isMoveLegal(x, y))
+                    break;
+
+                uint32_t moveIndex = x * board_size + y;
+                moves.emplace_back(moveIndex);
+            }
+        }
+    }
+    else
+    {
+        if (isMoveLegal(leftX, leftY))
+            moves.emplace_back(leftIndex);
+
+        if (isMoveLegal(rightX, rightY))
+            moves.emplace_back(rightIndex);
+    }
 }
 
 std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossiblePieceMoves(uint32_t pieceIndex)
@@ -162,30 +228,7 @@ std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossiblePie
     std::vector<uint32_t> captures;
     std::vector<uint32_t> moves;
 
-    int currentX = pieceIndex / board_size;
-    int currentY = pieceIndex % board_size;
-    float piece = board_state[pieceIndex];
-
-    if (piece == 0)
-        return {moves, captures};
-
-    const int direction = piece < 0 ? -1 : 1;
-
-    int leftX = currentX + 1, leftY = currentY + direction;
-    int rightX = currentX - 1, rightY = currentY + direction;
-
-    if (isMoveLegal(leftX, leftY))
-        moves.emplace_back(leftX * board_size + leftY);
-
-    if (isMoveLegal(rightX, rightY))
-        moves.emplace_back(rightX * board_size + rightY);
-
-    int leftJumpX = currentX - 2, leftJumpY = currentY + direction * 2;
-    int rightJumpX = currentX + 2, rightJumpY = currentY + direction * 2;
-
-    int32_t leftIndex = leftX * board_size + leftY;
-    int32_t rightIndex = rightX * board_size + rightY;
-
+    checkMoves(pieceIndex, moves);
     checkCaptures(pieceIndex, captures);
 
     return std::pair(moves, captures);
@@ -212,15 +255,13 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
     if (movePiece != 0 || currentPiece == 0)
         return;
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) 
-    && std::find(movesPossibleCurrentPiece.first.begin(), movesPossibleCurrentPiece.first.end(), moveIndex) != movesPossibleCurrentPiece.first.end())
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && std::find(movesPossibleCurrentPiece.first.begin(), movesPossibleCurrentPiece.first.end(), moveIndex) != movesPossibleCurrentPiece.first.end())
     {
         movePiece = currentPiece;
         currentPiece = 0;
         actionHappened = true;
     }
-    else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) 
-    && std::find(movesPossibleCurrentPiece.second.begin(), movesPossibleCurrentPiece.second.end(), moveIndex) != movesPossibleCurrentPiece.second.end())
+    else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && std::find(movesPossibleCurrentPiece.second.begin(), movesPossibleCurrentPiece.second.end(), moveIndex) != movesPossibleCurrentPiece.second.end())
     {
         movePiece = currentPiece;
         currentPiece = 0;
@@ -231,7 +272,7 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
         int moveY = moveIndex % board_size;
 
         int32_t dist = distance(ImVec2(currentX, currentY), ImVec2(moveX, moveY));
-        
+
         if (dist > 2)
         {
             std::vector<uint32_t> captures = movesPossibleCurrentPiece.second;
@@ -240,12 +281,36 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
             while (!captures.empty() && currentCaptureIndex != moveIndex)
             {
                 uint32_t nextMove = captures.front();
-                captures.erase(captures.begin()); 
+                captures.erase(captures.begin());
+                
+                if (isQueen(moveIndex))
+                {
+                    int32_t dx = (nextMove / board_size > currentCaptureIndex / board_size) ? 1 : -1;
+                    int32_t dy = (nextMove % board_size > currentCaptureIndex % board_size) ? 1 : -1;
+                    
+                    int32_t x = currentX, y = currentY;
 
-                uint32_t midIndex = getMiddle(currentCaptureIndex, nextMove);
-                board_state[midIndex] = 0; 
-        
-                currentCaptureIndex = nextMove; 
+                    while (x != moveX && y != moveY)
+                    {
+                        x += dx;
+                        y += dy;
+
+                        uint32_t currentIndex = x * board_size + y;
+                        
+                        if (isWithinBounds(x, y) && board_state[currentIndex] != 0) 
+                        {
+                            board_state[currentIndex] = 0;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    uint32_t midIndex = getMiddle(currentCaptureIndex, nextMove);
+                    board_state[midIndex] = 0;
+    
+                    currentCaptureIndex = nextMove;
+                }
 
                 checkCaptures(currentCaptureIndex, captures);
             }
@@ -260,6 +325,13 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 
     if (actionHappened)
     {
+        uint32_t pieceNewY = moveIndex % board_size;
+        if ((pieceNewY == 0 && movePiece < 0) ||            // Negative pieces reach bottom
+            (pieceNewY == board_size - 1 && movePiece > 0)) // Positive pieces reach top
+        {
+            movePiece = (movePiece > 0) ? 1 : -1;
+        }
+
         currentTurn = currentTurn == PLR ? BOT : PLR;
         movesPossibleCurrentPiece = {};
         currentSelectedPiece = -1;
@@ -268,7 +340,6 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 
 void Checkers::drawBoard()
 {
-    const float margin = 20.f;
     ImGui::SetNextWindowSize(ImVec2(board_size * tile_size + (margin * 2), board_size * tile_size + (margin * 2)));
     ImGui::Begin("Board", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
@@ -278,7 +349,10 @@ void Checkers::drawBoard()
 
     int32_t moveIndex = getCellMouseAt(board_start);
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && moveIndex != -1 && board_state[moveIndex])
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+        moveIndex != -1 &&
+        ((!currentTurn == false && board_state[moveIndex] > 0) ||
+         (!currentTurn == true && board_state[moveIndex] < 0)))
     {
         currentSelectedPiece = moveIndex;
         movesPossibleCurrentPiece = getPossiblePieceMoves(moveIndex);
@@ -322,17 +396,43 @@ void Checkers::drawBoard()
 
             if (currentPiece != 0)
                 drawPiece(drawlist, pieceColor, center, pieceIndex);
-
-            if (std::abs(currentPiece) == 1)
-                drawCrown(drawlist, center);
         }
     }
 
     ImGui::End();
 }
 
-void Checkers::drawCrown(ImDrawList *drawlist, const ImVec2 center)
+void Checkers::drawInfo()
 {
+}
+
+void Checkers::drawCrown(ImDrawList *drawlist, ImVec2 center)
+{
+    const ImU32 crownColor = IM_COL32(225, 225, 0, 255);
+    const float crownBaseHeight = tile_size * 0.01f;
+    const float crownBaseWidth = tile_size * 0.2f;
+
+    const float crownPeakHeight = tile_size * 0.2f;
+    const float crownPeakWidth = tile_size * 0.3f;
+
+    // Crown Base
+    const ImVec2 bottomLeft((center.x - crownBaseWidth), (center.y - crownBaseHeight));
+    const ImVec2 bottomRight((center.x + crownBaseWidth), (center.y - crownBaseHeight));
+
+    // Crown Peaks
+    const ImVec2 middlePeak(center.x, center.y - crownPeakHeight);
+    const ImVec2 leftPeak(bottomLeft.x - crownPeakWidth * 0.1f, center.y - crownPeakHeight);
+    const ImVec2 rightPeak(bottomRight.x + crownPeakWidth * 0.1f, center.y - crownPeakHeight);
+
+    const ImVec2 midLeft(center.x - crownPeakWidth * 0.25f, center.y - crownPeakHeight * 0.5);
+    const ImVec2 midRight(center.x + crownPeakWidth * 0.25f, center.y - crownPeakHeight * 0.5);
+
+    const ImVec2 outlinePoints[] = {bottomLeft, leftPeak, midLeft, middlePeak, midRight, rightPeak, bottomRight, bottomLeft};
+
+    drawlist->AddTriangleFilled(bottomLeft, middlePeak, bottomRight, crownColor);
+    drawlist->AddTriangleFilled(bottomLeft, leftPeak, bottomRight, crownColor);
+    drawlist->AddTriangleFilled(bottomLeft, rightPeak, bottomRight, crownColor);
+    drawlist->AddPolyline(outlinePoints, IM_ARRAYSIZE(outlinePoints), IM_COL32(255, 255, 0, 255), ImDrawFlags_None, 2.0f);
 }
 
 void Checkers::drawPiece(ImDrawList *drawlist, const ImU32 color, const ImVec2 center, const uint32_t id)
@@ -348,6 +448,9 @@ void Checkers::drawPiece(ImDrawList *drawlist, const ImU32 color, const ImVec2 c
     drawlist->AddCircleFilled(center, radius, color);
     drawlist->AddCircle(center, radius, color / 3, 0, tile_size / 10);
     drawlist->AddCircle(center, radius / 1.5, color / 3, 0, tile_size / 30);
+
+    if (abs(board_state[id]) == 1)
+        drawCrown(ImGui::GetWindowDrawList(), ImVec2(center.x, center.y + tile_size / 12.f));
 
     ImGui::End();
 }

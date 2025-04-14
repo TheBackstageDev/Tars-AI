@@ -9,18 +9,13 @@
 // 0.0 -> empty spot, 0.5 -> normal piece, 1.0 -> queen
 // negative for player/opponent, positive for bot.
 
-struct Move
-{
-    uint32_t moveIndex{0};
-    bool player;
-};
-
 class Checkers 
 {
 public:
     Checkers(const uint32_t board_size, const float tile_size);
 
     void drawBoard();
+    void drawInfo();
 
     const std::vector<float>& getCurrentBoard() const { return board_state; }
 
@@ -45,21 +40,28 @@ public:
 private:
     void initiateBoard();
     bool isQueen(uint32_t pieceIndex) { return std::abs(board_state[pieceIndex]) == 1; }
-    bool isMoveLegal(uint32_t x, uint32_t y) { return x < board_size && y < board_size && board_state[x * board_size + y] == 0; }
+    bool isMoveLegal(uint32_t x, uint32_t y) { return isWithinBounds(x, y) && board_state[x * board_size + y] == 0; }
+    bool isWithinBounds(uint32_t x, uint32_t y) { return x < board_size && y < board_size; }
 
-    bool canCapture(uint32_t moveIndex, uint32_t currentIndex);
-    void checkCaptures(uint32_t pieceIndex, std::vector<uint32_t>& captures, int dir = -2);
-    uint32_t getMiddle(uint32_t index1, uint32_t index2)
+    bool isGameOver(bool player)
     {
-        return (index1 + index2) / (board_size * 2) * board_size + ((index1 % board_size + index2 % board_size) / 2);
+        const std::pair<std::vector<uint32_t>, std::vector<uint32_t>> possibleMoves = getPossibleMoves(player);
+        return possibleMoves.first.size() == 0 && possibleMoves.second.size() == 0;
     }
 
+    bool canCapture(uint32_t pieceIndex, uint32_t moveIndex, bool pieceOwner);
+    void checkCaptures(uint32_t pieceIndex, std::vector<uint32_t>& captures, int dir = -2, int32_t pieceOwner = -1);
+    void checkMoves(uint32_t pieceIndex, std::vector<uint32_t>& moves, int dir = -2);
+
+    uint32_t getMiddle(uint32_t index1, uint32_t index2) { return (index1 + index2) / (board_size * 2) * board_size + ((index1 % board_size + index2 % board_size) / 2); }
 
     void drawPiece(ImDrawList* drawlist, const ImU32 color, const ImVec2 center, const uint32_t id);
-    void drawCrown(ImDrawList* drawlist, const ImVec2 center);
+    void drawCrown(ImDrawList* drawlist, ImVec2 center);
 
     uint32_t board_size{0};
     float tile_size{0};
+
+    const float margin = 20.f;
 
     std::vector<float> board_state;
     uint32_t pieces_left{24};
