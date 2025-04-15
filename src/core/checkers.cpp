@@ -340,7 +340,7 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 
 void Checkers::drawGameOverScreen()
 {
-    if (!isGameOver(currentTurn)) 
+    if (isGameOver(currentTurn)) 
     {
         ImGui::OpenPopup("Game Over");
 
