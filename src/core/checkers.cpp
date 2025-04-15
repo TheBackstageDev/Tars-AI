@@ -30,7 +30,7 @@ void Checkers::initiateBoard()
             {
                 if (y < board_size / 2 - 1)
                 {
-                    board_state[index] = 1.0;
+                    board_state[index] = 0.5;
                 }
                 else if (y > board_size / 2)
                 {
@@ -326,8 +326,8 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
     if (actionHappened)
     {
         uint32_t pieceNewY = moveIndex % board_size;
-        if ((pieceNewY == 0 && movePiece < 0) ||            // Negative pieces reach bottom
-            (pieceNewY == board_size - 1 && movePiece > 0)) // Positive pieces reach top
+        if (!isQueen(moveIndex) && ((pieceNewY == 0 && movePiece < 0) ||            // Negative pieces reach bottom
+            (pieceNewY == board_size - 1 && movePiece > 0))) // Positive pieces reach top
         {
             movePiece = (movePiece > 0) ? 1 : -1;
         }
@@ -335,6 +335,33 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
         currentTurn = currentTurn == PLR ? BOT : PLR;
         movesPossibleCurrentPiece = {};
         currentSelectedPiece = -1;
+    }
+}
+
+void Checkers::drawGameOverScreen()
+{
+    if (!isGameOver(currentTurn)) 
+    {
+        ImGui::OpenPopup("Game Over");
+
+        ImVec2 windowSize = ImGui::GetWindowSize();
+
+        if (ImGui::BeginPopupModal("Game Over", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            std::string winnerText = (currentTurn == false) ? "Bot Wins!" : "Player Wins!";
+            ImGui::TextColored(ImVec4(255, 215, 0, 255), "%s", winnerText.c_str()); 
+
+            if (ImGui::Button("Restart Game"))
+            {
+                initiateBoard(); 
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (ImGui::Button("Exit"))
+                exit(0);
+
+            ImGui::EndPopup();
+        }
     }
 }
 
@@ -400,6 +427,8 @@ void Checkers::drawBoard()
     }
 
     ImGui::End();
+
+    drawGameOverScreen();
 }
 
 void Checkers::drawInfo()

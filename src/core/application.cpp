@@ -15,7 +15,7 @@
 #include <chrono>
 #include "../config.h"
 
-/* void NeuralNetworkTrain()
+void NeuralNetworkTrain()
 {
     NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
     //NTARS::DenseNeuralNetwork network{"TARS.json"};
@@ -24,7 +24,7 @@
 
     std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
-    const size_t batch_size = 200;
+    const size_t batch_size = 500;
     float learningRate = 0.2;
 
     const auto& data = dataset.training_images;
@@ -42,7 +42,7 @@
         batches.emplace_back(std::move(miniBatch));
     }
 
-    float learning_rate_threshold = 0.7;
+    float learning_rate_threshold = 0.9;
     float result = 0.0;
     for (auto& minibatch : batches)
     {
@@ -61,7 +61,7 @@
     }
 
     network.save();
-} */
+}
 
 namespace core
 {

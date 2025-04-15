@@ -39,6 +39,8 @@ public:
 
 private:
     void initiateBoard();
+    void drawGameOverScreen();
+    
     bool isQueen(uint32_t pieceIndex) { return std::abs(board_state[pieceIndex]) == 1; }
     bool isMoveLegal(uint32_t x, uint32_t y) { return isWithinBounds(x, y) && board_state[x * board_size + y] == 0; }
     bool isWithinBounds(uint32_t x, uint32_t y) { return x < board_size && y < board_size; }

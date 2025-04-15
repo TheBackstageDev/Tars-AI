@@ -7,6 +7,7 @@
 #include <cassert>
 #include <random>
 #include "tarsmath/calculus/sigmoid.hpp"
+#include <numeric>
 
 namespace NTARS
 {
@@ -17,14 +18,9 @@ namespace NTARS
 
         const float activate(const std::vector<float>& inputs, const std::vector<float>& weights, const float bias)
         {
-            float sum{0.0};
+            assert(inputs.size() == weights.size());
 
-            for (size_t i = 0; i < weights.size(); ++i)
-            {
-                sum += inputs[i] * weights[i];
-            }
-            sum += bias;
-
+            float sum = std::inner_product(inputs.begin(), inputs.end(), weights.begin(), bias, std::plus<>(), std::multiplies<>());
             this->activation = TMATH::sigmoid(sum);
 
             return activation;
