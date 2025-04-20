@@ -14,7 +14,7 @@ namespace NTARS
         struct TrainingData
         {
             T data;
-            std::string label;
+            std::vector<float> label;
         };
     } // namespace DATA
 } // namespace NTARS

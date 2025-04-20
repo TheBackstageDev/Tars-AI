@@ -7,6 +7,7 @@
 #include "ntars/base/data.hpp"
 #include "ntars/base/utils.hpp"
 #include <numeric>
+#include <imgui/imgui/imgui.h>
 
 namespace NTARS
 {
@@ -20,13 +21,14 @@ namespace NTARS
         ~DenseNeuralNetwork();
 
         uint32_t run(const std::vector<float>& inputs);
-
         float train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
 
         void save();
 
         inline std::vector<size_t> getStructure() const { return _structure; }
         inline std::vector<DenseLayer>& getLayers() { return _layers; }
+
+        void drawNetwork(bool partial);
     private:
         void initializeWeightsAndBiases(const std::vector<size_t>& structure);
         void initializeTrainingBuffers();

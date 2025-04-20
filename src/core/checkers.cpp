@@ -19,6 +19,7 @@ Checkers::Checkers(const uint32_t board_size, const float tile_size)
 
 void Checkers::initiateBoard()
 {
+    currentTurn = PLR;
     for (int x = 0; x < board_size; ++x)
     {
         for (int y = 0; y < board_size; ++y)
@@ -146,6 +147,24 @@ void Checkers::checkCaptures(uint32_t pieceIndex, std::vector<uint32_t> &capture
     }
 }
 
+std::vector<uint32_t> Checkers::getPieces(bool player)
+{
+    std::vector<uint32_t> pieceIndexes;
+    for (int32_t x = 0; x < board_size; ++x)
+    {
+        for (int32_t y = 0; y < board_size; ++y)
+        {
+            const uint32_t cellIndex = x * board_size + y;
+            const float current_cell = board_state[cellIndex];
+            if (current_cell == 0 && !(player && current_cell > 0 || !player && current_cell < 0))
+                continue;
+            
+            pieceIndexes.emplace_back(cellIndex);
+        }
+    }
+    return pieceIndexes;
+}
+
 std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossibleMoves(bool player)
 {
     std::vector<uint32_t> captures;
@@ -237,11 +256,6 @@ std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossiblePie
 std::pair<std::vector<uint32_t>, std::vector<uint32_t>> movesPossibleCurrentPiece;
 int32_t currentSelectedPiece{-1};
 
-#define PLR false
-#define BOT true
-
-bool currentTurn = PLR;
-
 void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 {
     bool actionHappened{false};
@@ -255,13 +269,15 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
     if (movePiece != 0 || currentPiece == 0)
         return;
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && std::find(movesPossibleCurrentPiece.first.begin(), movesPossibleCurrentPiece.first.end(), moveIndex) != movesPossibleCurrentPiece.first.end())
+    movesPossibleCurrentPiece = getPossiblePieceMoves(pieceIndex);
+
+    if (std::find(movesPossibleCurrentPiece.first.begin(), movesPossibleCurrentPiece.first.end(), moveIndex) != movesPossibleCurrentPiece.first.end())
     {
         movePiece = currentPiece;
         currentPiece = 0;
         actionHappened = true;
     }
-    else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && std::find(movesPossibleCurrentPiece.second.begin(), movesPossibleCurrentPiece.second.end(), moveIndex) != movesPossibleCurrentPiece.second.end())
+    else if (std::find(movesPossibleCurrentPiece.second.begin(), movesPossibleCurrentPiece.second.end(), moveIndex) != movesPossibleCurrentPiece.second.end())
     {
         movePiece = currentPiece;
         currentPiece = 0;
@@ -351,12 +367,14 @@ void Checkers::drawGameOverScreen()
             std::string winnerText = (currentTurn == false) ? "Bot Wins!" : "Player Wins!";
             ImGui::TextColored(ImVec4(255, 215, 0, 255), "%s", winnerText.c_str()); 
 
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 50, 50, 255)); 
             if (ImGui::Button("Restart Game"))
             {
                 initiateBoard(); 
                 ImGui::CloseCurrentPopup();
             }
-
+            ImGui::PopStyleColor();
+            
             if (ImGui::Button("Exit"))
                 exit(0);
 
@@ -385,7 +403,10 @@ void Checkers::drawBoard()
         movesPossibleCurrentPiece = getPossiblePieceMoves(moveIndex);
     }
 
-    handleAction(currentSelectedPiece, moveIndex);
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+    {
+        handleAction(currentSelectedPiece, moveIndex);
+    }
 
     for (int x = 0; x < board_size; ++x)
     {

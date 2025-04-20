@@ -11,14 +11,15 @@
 #include "mnist/mnist_reader.hpp"
 
 #include "checkers.hpp"
+#include "checkersminmax.hpp"
 
 #include <chrono>
 #include "../config.h"
 
 void NeuralNetworkTrain()
 {
-    NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
-    //NTARS::DenseNeuralNetwork network{"TARS.json"};
+    //NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
+    NTARS::DenseNeuralNetwork network{"TARS.json"};
     mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset =
         mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
 
@@ -35,7 +36,11 @@ void NeuralNetworkTrain()
         {
             NTARS::DATA::TrainingData<std::vector<float>> newData{};
             newData.data = std::vector<float>(data.at(i + j).begin(), data.at(i + j).end());
-            newData.label = dataset.training_labels.at(i + j);
+
+            std::vector<float> expected(10, 0.0);
+            const int expectedLabel = static_cast<int>(dataset.training_labels.at(i + j));
+            expected.at(expectedLabel) = 1.0;
+            newData.label = expected;
     
             miniBatch.emplace_back(std::move(newData));
         }
@@ -105,10 +110,23 @@ namespace core
 
     void application::run()
     {
-        Checkers checkers(8, 70.f);
+        const uint32_t board_size = 8;
+        Checkers checkers(board_size, 70.f);
+
+        NETWORK::CheckersMinMax AI(4, board_size);
+        NTARS::DenseNeuralNetwork network{{64, 500, 500, 250, 64}, "CheckinTime"};
 
         while (!window->should_close())
         {
+            if (checkers.getTurn() == true)
+            {
+                auto move = AI.findBestMove(checkers.getCurrentBoard());
+                uint32_t moveMoveIndex = std::get<1>(move);
+                uint32_t movePieceIndex = std::get<2>(move);
+        
+                checkers.handleAction(movePieceIndex, moveMoveIndex);        
+            }
+
             glClear(GL_COLOR_BUFFER_BIT);
             imguiNewFrame();
 

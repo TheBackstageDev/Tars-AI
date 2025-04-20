@@ -9,6 +9,9 @@
 // 0.0 -> empty spot, 0.5 -> normal piece, 1.0 -> queen
 // negative for player/opponent, positive for bot.
 
+#define PLR false
+#define BOT true
+
 class Checkers 
 {
 public:
@@ -20,7 +23,8 @@ public:
     const std::vector<float>& getCurrentBoard() const { return board_state; }
 
     void handleAction(int32_t pieceIndex, int32_t moveIndex);
-    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getPossibleMoves(bool player = false); // player has to be inverted for some reason (don't ask me why);
+    std::vector<uint32_t> getPieces(bool player);
+    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getPossibleMoves(bool player); // player has to be inverted for some reason (don't ask me why);
     std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getPossiblePieceMoves(uint32_t pieceIndex);
 
     inline const int32_t getCellMouseAt(const ImVec2 boardStart) const
@@ -36,7 +40,9 @@ public:
 
         return x * board_size + y;
     }
+    inline uint32_t getBoardSize() const { return board_size; }
 
+    inline const bool getTurn() { return currentTurn; }
 private:
     void initiateBoard();
     void drawGameOverScreen();
@@ -63,10 +69,10 @@ private:
     uint32_t board_size{0};
     float tile_size{0};
 
+    bool currentTurn = PLR;
     const float margin = 20.f;
 
     std::vector<float> board_state;
-    uint32_t pieces_left{24};
 };
 
 #endif // CHECKERS_GAME_HPP

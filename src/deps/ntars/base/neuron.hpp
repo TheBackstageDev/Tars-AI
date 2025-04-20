@@ -2,10 +2,6 @@
 #define NTARS_NEURON_HPP
 
 #include <vector>
-#include <cstdlib>
-#include <ctime>
-#include <cassert>
-#include <random>
 #include "tarsmath/calculus/sigmoid.hpp"
 #include <numeric>
 

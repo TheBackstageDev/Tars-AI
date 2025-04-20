@@ -12,6 +12,7 @@ constexpr bool debug =
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <random>
 
 #include "json/json.hpp"
 #include "deps/tarscuda/tensor_operations.hpp"
@@ -219,13 +220,12 @@ namespace NTARS
             biasGradients[l] = TMATH::Matrix_t<float>(biases[l].rows(), 1);
         }
         
-        for (auto& image : miniBatch)
+        for (auto& train_data : miniBatch)
         {
-            std::vector<float> outputs = runInternal(image.data);
-            std::vector<float> expected(outputs.size(), 0.0);
+            std::vector<float> outputs = runInternal(train_data.data);
+            std::vector<float> expected = train_data.label;
 
-            const int expectedLabel = static_cast<int>(image.label[0]);
-            expected.at(expectedLabel) = 1.0;
+            const int expectedLabel = std::distance(expected.begin(), std::find(expected.begin(), expected.end(), 1));
 
             TMATH::Matrix_t<float> outputDelta(outputs.size(), 1);
             for (size_t i = 0; i < outputs.size(); ++i)
@@ -244,7 +244,7 @@ namespace NTARS
                 }
 
                 TMATH::Matrix_t<float> prevActivations = (l == 0) 
-                    ? TMATH::Matrix_t<float>(image.data, image.data.size(), 1) 
+                    ? TMATH::Matrix_t<float>(train_data.data, train_data.data.size(), 1) 
                     : TMATH::Matrix_t<float>(_layers[l - 1].getActivations(), _layers[l - 1].getActivations().size(), 1);      
                 
                 TMATH::Matrix_t<float> gradient = deltas[l] * prevActivations.transpose();

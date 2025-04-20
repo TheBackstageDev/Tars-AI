@@ -78,6 +78,7 @@
         "coroutine": "cpp",
         "stop_token": "cpp",
         "thread": "cpp",
-        "cstdarg": "cpp"
+        "cstdarg": "cpp",
+        "stdfloat": "cpp"
     },
 }

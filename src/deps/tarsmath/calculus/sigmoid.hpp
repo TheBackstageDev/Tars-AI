@@ -14,7 +14,8 @@ namespace TMATH
 
     inline float sigmoid_derivative(float x)
     {
-        return sigmoid(x) * (1.0 - sigmoid(x));
+        float result = sigmoid(x);
+        return result * (1.0 - result);
     }
 
     inline std::vector<float> sigmoid_derivative(std::vector<float> x)
