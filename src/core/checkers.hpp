@@ -22,10 +22,12 @@ public:
 
     const std::vector<float>& getCurrentBoard() const { return board_state; }
 
+    void handleNetworkAction(const std::vector<float>& results);
     void handleAction(int32_t pieceIndex, int32_t moveIndex);
     std::vector<uint32_t> getPieces(bool player);
     std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getPossibleMoves(bool player); // player has to be inverted for some reason (don't ask me why);
     std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getPossiblePieceMoves(uint32_t pieceIndex);
+    std::vector<uint32_t> getPossibleAllMoves();
 
     inline const int32_t getCellMouseAt(const ImVec2 boardStart) const
     {
@@ -43,6 +45,7 @@ public:
     inline uint32_t getBoardSize() const { return board_size; }
 
     inline const bool getTurn() { return currentTurn; }
+    inline const uint32_t getAmmountMoves() { return getPossibleAllMoves().size(); }
 private:
     void initiateBoard();
     void drawGameOverScreen();

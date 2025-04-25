@@ -193,6 +193,31 @@ std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossibleMov
     return std::pair(moves, captures);
 }
 
+std::vector<uint32_t> Checkers::getPossibleAllMoves()
+{
+    std::vector<uint32_t> captures;
+    std::vector<uint32_t> moves;
+
+    for (int32_t x = 0; x < board_size; ++x)
+    {
+        for (int32_t y = 0; y < board_size; ++y)
+        {
+            const uint32_t cellIndex = x * board_size + y;
+            const float current_cell = board_state[cellIndex];
+            if (current_cell == 0)
+                continue;
+
+            checkMoves(cellIndex, moves);
+            checkCaptures(cellIndex, captures);
+        }
+    }
+
+    std::vector<uint32_t> allMoves = captures;
+    allMoves.insert(allMoves.end(), moves.begin(), moves.end());
+
+    return allMoves;
+}
+
 void Checkers::checkMoves(uint32_t pieceIndex, std::vector<uint32_t> &moves, int dir)
 {
     float piece = board_state[pieceIndex];
@@ -256,6 +281,11 @@ std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossiblePie
 std::pair<std::vector<uint32_t>, std::vector<uint32_t>> movesPossibleCurrentPiece;
 int32_t currentSelectedPiece{-1};
 
+void Checkers::handleNetworkAction(const std::vector<float>& results)
+{
+    
+}
+
 void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 {
     bool actionHappened{false};
@@ -282,10 +312,10 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
         movePiece = currentPiece;
         currentPiece = 0;
 
-        int currentX = pieceIndex / board_size;
-        int currentY = pieceIndex % board_size;
-        int moveX = moveIndex / board_size;
-        int moveY = moveIndex % board_size;
+        int32_t currentX = pieceIndex / board_size;
+        int32_t currentY = pieceIndex % board_size;
+        int32_t moveX = moveIndex / board_size;
+        int32_t moveY = moveIndex % board_size;
 
         int32_t dist = distance(ImVec2(currentX, currentY), ImVec2(moveX, moveY));
 
@@ -306,7 +336,7 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
                     
                     int32_t x = currentX, y = currentY;
 
-                    while (x != moveX && y != moveY)
+                    while (x != moveX || y != moveY)
                     {
                         x += dx;
                         y += dy;
