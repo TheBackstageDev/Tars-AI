@@ -79,6 +79,8 @@
         "stop_token": "cpp",
         "thread": "cpp",
         "cstdarg": "cpp",
-        "stdfloat": "cpp"
+        "stdfloat": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp"
     },
 }

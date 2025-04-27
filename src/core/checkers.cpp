@@ -1,6 +1,8 @@
 #include "checkers.hpp"
 #include <string>
 #include <iostream>
+#include <unordered_map>
+#include <unordered_set>
 
 // Player Colors
 #define PLR1_COLOR IM_COL32(225, 0, 0, 255)     // Red (Player 1)
@@ -20,6 +22,8 @@ Checkers::Checkers(const uint32_t board_size, const float tile_size)
 void Checkers::initiateBoard()
 {
     currentTurn = PLR;
+    moveHistory.clear();
+
     for (int x = 0; x < board_size; ++x)
     {
         for (int y = 0; y < board_size; ++y)
@@ -156,7 +160,15 @@ std::vector<uint32_t> Checkers::getPieces(bool player)
         {
             const uint32_t cellIndex = x * board_size + y;
             const float current_cell = board_state[cellIndex];
-            if (current_cell == 0 && !(player && current_cell > 0 || !player && current_cell < 0))
+
+            if (current_cell == 0)
+                continue;
+
+            const bool bot_piece = current_cell < 0;
+
+            if (bot_piece && player)
+                continue;
+            if (!bot_piece && !player)
                 continue;
             
             pieceIndexes.emplace_back(cellIndex);
@@ -267,6 +279,20 @@ void Checkers::checkMoves(uint32_t pieceIndex, std::vector<uint32_t> &moves, int
     }
 }
 
+std::vector<uint32_t> Checkers::getPossiblePieceMovesVector(uint32_t pieceIndex)
+{
+    std::vector<uint32_t> captures;
+    std::vector<uint32_t> moves;
+
+    checkMoves(pieceIndex, moves);
+    checkCaptures(pieceIndex, captures);
+
+    std::vector<uint32_t> allmoves = moves;
+    allmoves.insert(allmoves.end(), captures.begin(), captures.end());
+
+    return allmoves;
+}
+
 std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossiblePieceMoves(uint32_t pieceIndex)
 {
     std::vector<uint32_t> captures;
@@ -281,23 +307,54 @@ std::pair<std::vector<uint32_t>, std::vector<uint32_t>> Checkers::getPossiblePie
 std::pair<std::vector<uint32_t>, std::vector<uint32_t>> movesPossibleCurrentPiece;
 int32_t currentSelectedPiece{-1};
 
-void Checkers::handleNetworkAction(const std::vector<float>& results)
+bool Checkers::handleNetworkAction(std::vector<float>& activations)
 {
-    
+    uint32_t moveIndex = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
+    int32_t pieceIndex = -1;
+
+    std::unordered_map<uint32_t, std::unordered_set<uint32_t>> pieceMovesMap;
+    for (uint32_t validatingPieceIndex : getPieces(BOT)) 
+    {
+        std::vector<uint32_t> possibleMoves = getPossiblePieceMovesVector(validatingPieceIndex);
+        pieceMovesMap[validatingPieceIndex] = std::unordered_set<uint32_t>(possibleMoves.begin(), possibleMoves.end());
+    }
+
+    if (pieceMovesMap.size() == 0)
+        return false;
+
+    while (pieceIndex == -1 && !activations.empty())
+    {
+        for (const auto& [validatingPieceIndex, moves] : pieceMovesMap) 
+        {
+            if (moves.find(moveIndex) != moves.end() && board_state[validatingPieceIndex] > 0) 
+            {
+                pieceIndex = validatingPieceIndex;
+                break;
+            }
+        }  
+
+        if (pieceIndex == -1) 
+        {
+            activations[moveIndex] = 0.f;
+            moveIndex = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
+        }
+    }
+
+    return handleAction(pieceIndex, moveIndex);
 }
 
-void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
+bool Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 {
     bool actionHappened{false};
 
     if (pieceIndex == -1 || moveIndex == -1)
-        return;
+        return false;
 
     float &currentPiece = board_state[pieceIndex];
     float &movePiece = board_state[moveIndex];
 
     if (movePiece != 0 || currentPiece == 0)
-        return;
+        return false;
 
     movesPossibleCurrentPiece = getPossiblePieceMoves(pieceIndex);
 
@@ -378,10 +435,17 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
             movePiece = (movePiece > 0) ? 1 : -1;
         }
 
-        currentTurn = currentTurn == PLR ? BOT : PLR;
+        moveHistory.insert({pieceIndex, moveIndex});
+
         movesPossibleCurrentPiece = {};
         currentSelectedPiece = -1;
+
+        currentTurn = !currentTurn;
+
+        return true;
     }
+
+    return false;
 }
 
 void Checkers::drawGameOverScreen()

@@ -145,7 +145,7 @@ namespace NTARS
         }
     };
 
-    uint32_t DenseNeuralNetwork::run(const std::vector<float>& inputs)
+    std::vector<float> DenseNeuralNetwork::run(const std::vector<float>& inputs)
     {
         std::vector<float> currentInputs = inputs;
         for (size_t l = 0; l < _layers.size(); ++l)
@@ -153,7 +153,7 @@ namespace NTARS
             currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
         }
 
-        return getMostActive(currentInputs);
+        return currentInputs;
     }
 
     std::vector<float> DenseNeuralNetwork::runInternal(const std::vector<float>& inputs)

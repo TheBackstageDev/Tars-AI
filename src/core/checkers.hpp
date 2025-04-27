@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <vector>
 #include <tuple>
+#include <set>
 
 #include <imgui/imgui/backends/imgui_impl_opengl3.h>
 // 0.0 -> empty spot, 0.5 -> normal piece, 1.0 -> queen
@@ -22,11 +23,13 @@ public:
 
     const std::vector<float>& getCurrentBoard() const { return board_state; }
 
-    void handleNetworkAction(const std::vector<float>& results);
-    void handleAction(int32_t pieceIndex, int32_t moveIndex);
+    bool handleNetworkAction(std::vector<float>& activations);
+    bool handleAction(int32_t pieceIndex, int32_t moveIndex);
+
     std::vector<uint32_t> getPieces(bool player);
     std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getPossibleMoves(bool player); // player has to be inverted for some reason (don't ask me why);
     std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getPossiblePieceMoves(uint32_t pieceIndex);
+    std::vector<uint32_t> getPossiblePieceMovesVector(uint32_t pieceIndex);
     std::vector<uint32_t> getPossibleAllMoves();
 
     inline const int32_t getCellMouseAt(const ImVec2 boardStart) const
@@ -75,6 +78,7 @@ private:
     bool currentTurn = PLR;
     const float margin = 20.f;
 
+    std::set<std::pair<uint32_t, uint32_t>> moveHistory;
     std::vector<float> board_state;
 };
 

@@ -74,7 +74,6 @@ namespace NETWORK
         }
     }
 
-
     std::tuple<float, int32_t, int32_t> CheckersMinMax::findBestMove(const std::vector<float> &board, bool max, uint32_t currentDepth, float alpha, float beta)
     {
         if (currentDepth == depth)

@@ -116,19 +116,28 @@ namespace core
         NETWORK::CheckersMinMax AI(4, board_size);
         NTARS::DenseNeuralNetwork network{{64, 500, 500, 250, 64}, "CheckinTime"};
 
+        std::vector<NTARS::DATA::TrainingData<float>> trainingData;
+
+        uint32_t gamesPlayed{0}; 
+
         while (!window->should_close())
         {
+            if (checkers.getAmmountMoves() < 12)
+                AI.setNewDepth(6);
+
             if (checkers.getTurn() == false)
             {
                 auto move = AI.findBestMove(checkers.getCurrentBoard());
                 uint32_t moveMoveIndex = std::get<1>(move);
                 uint32_t movePieceIndex = std::get<2>(move);
 
-                checkers.handleAction(movePieceIndex, moveMoveIndex);        
+                checkers.handleAction(movePieceIndex, moveMoveIndex);
+            } 
+            else
+            {
+                std::vector<float> activations = network.run(checkers.getCurrentBoard());
+                checkers.handleNetworkAction(activations);
             }
-
-            if (checkers.getAmmountMoves() < 12)
-                AI.setNewDepth(5);
 
             glClear(GL_COLOR_BUFFER_BIT);
             imguiNewFrame();

@@ -20,7 +20,7 @@ namespace NTARS
 
         ~DenseNeuralNetwork();
 
-        uint32_t run(const std::vector<float>& inputs);
+        std::vector<float> run(const std::vector<float>& inputs);
         float train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
 
         void save();
