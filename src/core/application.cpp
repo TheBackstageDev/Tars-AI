@@ -116,7 +116,7 @@ namespace core
         NETWORK::CheckersMinMax AI(4, board_size);
         NTARS::DenseNeuralNetwork network{{64, 500, 500, 250, 64}, "CheckinTime"};
 
-        std::vector<NTARS::DATA::TrainingData<float>> trainingData;
+        std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
 
         uint32_t gamesPlayed{0}; 
 
@@ -127,7 +127,7 @@ namespace core
 
             if (checkers.getTurn() == false)
             {
-                auto move = AI.findBestMove(checkers.getCurrentBoard());
+                auto move = AI.findBestMove(checkers.getCurrentBoard(), trainingData);
                 uint32_t moveMoveIndex = std::get<1>(move);
                 uint32_t movePieceIndex = std::get<2>(move);
 

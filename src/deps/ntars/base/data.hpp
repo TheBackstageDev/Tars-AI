@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 #include <variant>
-#include "ntars/models/DenseNetwork.hpp"
 
 namespace NTARS
 {

@@ -74,7 +74,15 @@ namespace NETWORK
         }
     }
 
-    std::tuple<float, int32_t, int32_t> CheckersMinMax::findBestMove(const std::vector<float> &board, bool max, uint32_t currentDepth, float alpha, float beta)
+    std::vector<float> CheckersMinMax::getTrainingLabel(uint32_t moveIndex)
+    {
+        std::vector<float> emptyBoard(board_size * board_size, 0);
+        emptyBoard[moveIndex] = 1.0;
+
+        return emptyBoard;
+    }
+
+    std::tuple<float, int32_t, int32_t> CheckersMinMax::findBestMove(const std::vector<float> &board, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max, uint32_t currentDepth, float alpha, float beta)
     {
         if (currentDepth == depth)
             return {evaluatePosition(board, max), -1, -1};
@@ -116,7 +124,7 @@ namespace NETWORK
                     movePiece = (movePiece > 0) ? 1.f : -1.f; 
                 }
 
-                float value = std::get<0>(findBestMove(boardclone, !max, currentDepth + 1, alpha, beta));
+                float value = std::get<0>(findBestMove(boardclone, trainingData, !max, currentDepth + 1, alpha, beta));
                 
                 if (!undoStack.empty())
                     value += static_cast<float>(undoStack.size()) * max ? -1.f : 1.f;
@@ -147,6 +155,14 @@ namespace NETWORK
             }
         }
 
+        if (chosenMove != -1) {
+            NTARS::DATA::TrainingData<std::vector<float>> moveData;
+            moveData.data = std::move(boardclone);
+            moveData.label = getTrainingLabel(chosenMove);
+
+            trainingData.push_back(std::move(moveData));
+        }
+        
         return {bestValue, chosenMove, chosenPiece};
     }
 

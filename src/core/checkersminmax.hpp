@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <functional>
 #include <cstdlib>
+#include "ntars/base/data.hpp"
 
 namespace NETWORK
 {
@@ -13,7 +14,7 @@ namespace NETWORK
     public:
         CheckersMinMax(uint32_t depth, uint32_t board_size);
         
-        std::tuple<float, int32_t, int32_t> findBestMove(const std::vector<float>& board, bool max = false, uint32_t currentDepth = 0, float alpha = -1, float beta = -1);
+        std::tuple<float, int32_t, int32_t> findBestMove(const std::vector<float>& board, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max = false, uint32_t currentDepth = 0, float alpha = -1, float beta = -1);
 
         inline void setNewDepth(uint32_t depth) { this->depth = depth; }
     private:
@@ -24,6 +25,8 @@ namespace NETWORK
         std::vector<uint32_t> getCapturesByPiece(const std::vector<float> board, uint32_t pieceIndex);
         std::vector<uint32_t> getAllMoves(const std::vector<float> board, bool max);
         std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getAllMovesWithCaptures(const std::vector<float> board, bool max);
+
+        std::vector<float> getTrainingLabel(uint32_t moveIndex);
 
         // Imported From Checkers.hpp
         bool isMoveLegal(uint32_t x, uint32_t y, const std::vector<float> board) { return isWithinBounds(x, y) && board[x * board_size + y] == 0; }
