@@ -16,7 +16,7 @@
 #include <chrono>
 #include "../config.h"
 
-void NeuralNetworkTrain()
+/* void NeuralNetworkTrain()
 {
     //NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
     NTARS::DenseNeuralNetwork network{"TARS.json"};
@@ -66,6 +66,51 @@ void NeuralNetworkTrain()
     }
 
     network.save();
+} */
+
+void trainCheckersNetwork()
+{
+    //NTARS::DenseNeuralNetwork network{{64, 512, 256, 128, 64}, "CheckinTime.json"};
+    NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
+
+    const size_t batch_size = 500;
+    float learningRate = 0.5;
+
+    std::vector<NTARS::DATA::TrainingData<std::vector<float>>> rawData = NTARS::DATA::loadDataListJSON<std::vector<float>>("CheckersData");
+    std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
+
+    for (size_t i = 0; i < rawData.size(); i += batch_size)
+    {
+        std::vector<NTARS::DATA::TrainingData<std::vector<float>>> batch;
+        auto start = rawData.begin() + i;
+        auto end = (i + batch_size < rawData.size()) ? (start + batch_size) : rawData.end();
+        batch.insert(batch.end(), start, end);
+        batches.push_back(std::move(batch));
+    }
+
+    float learning_rate_threshold = 0.9;
+    float result = 0.0;
+
+    for (int32_t epoch = 1; epoch <= 2; ++epoch)
+    {
+        for (auto& minibatch : batches)
+        {
+            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+            result = network.train(minibatch, learningRate);
+            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    
+            if (result >= learning_rate_threshold)
+            {
+                learning_rate_threshold += 1 - (learning_rate_threshold / 2);
+                learningRate /= 2;
+            }
+    
+            std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
+            std::cout << "it took " << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds to complete this training session" << std::endl;
+        }
+        
+        network.save();
+    }
 }
 
 namespace core
@@ -73,6 +118,7 @@ namespace core
     application::application(const std::string& title, uint32_t width, uint32_t height)
     {
         //NeuralNetworkTrain();
+        //trainCheckersNetwork();
         window = std::make_unique<window_t>(title, width, height);
         imguiSetup();
     }
@@ -113,30 +159,35 @@ namespace core
         const uint32_t board_size = 8;
         Checkers checkers(board_size, 70.f);
 
-        NETWORK::CheckersMinMax AI(4, board_size);
-        NTARS::DenseNeuralNetwork network{{64, 500, 500, 250, 64}, "CheckinTime"};
+        NETWORK::CheckersMinMax algorithm(4, board_size);
+        NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
 
-        uint32_t gamesPlayed{0}; 
-
         while (!window->should_close())
         {
-            if (checkers.getAmmountMoves() < 12)
-                AI.setNewDepth(6);
+            if (checkers.getAmmountMoves() < 6)
+                algorithm.setNewDepth(6);
 
             if (checkers.getTurn() == false)
             {
-                auto move = AI.findBestMove(checkers.getCurrentBoard(), trainingData);
+                auto move = algorithm.findBestMove(checkers.getCurrentBoard(), trainingData);
                 uint32_t moveMoveIndex = std::get<1>(move);
                 uint32_t movePieceIndex = std::get<2>(move);
 
                 checkers.handleAction(movePieceIndex, moveMoveIndex);
+                algorithm.incrementMoveCount();
             } 
-            else
+            else if (!checkers.isGameOver(true))
             {
                 std::vector<float> activations = network.run(checkers.getCurrentBoard());
                 checkers.handleNetworkAction(activations);
+                algorithm.incrementMoveCount();
+            }
+
+            if (checkers.isGameOver(false))
+            {
+                algorithm.resetMoveCount();
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
@@ -151,7 +202,6 @@ namespace core
             glfwPollEvents();
         }
     }
-    
 } // namespace core
 
 

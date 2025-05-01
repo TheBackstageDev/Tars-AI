@@ -17,8 +17,10 @@ namespace NETWORK
         std::tuple<float, int32_t, int32_t> findBestMove(const std::vector<float>& board, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max = false, uint32_t currentDepth = 0, float alpha = -1, float beta = -1);
 
         inline void setNewDepth(uint32_t depth) { this->depth = depth; }
+        inline void incrementMoveCount() { moveNumber++; }
+        inline void resetMoveCount() { moveNumber = 0; }
     private:
-        float evaluatePosition(const std::vector<float> currentBoard, bool max);
+        float evaluatePosition(const std::vector<float>& currentBoard, bool max);
 
         std::vector<uint32_t> getMovesByPiece(const std::vector<float> board, uint32_t pieceIndex);
         std::pair<std::vector<uint32_t>, std::vector<uint32_t>> getMovesByPieceWithCaptures(const std::vector<float> board, uint32_t pieceIndex);
@@ -44,6 +46,8 @@ namespace NETWORK
 
         bool isGameOver(const std::vector<float>& board, bool player)
         {
+            if (moveNumber <= 12) return false;
+
             const std::vector<uint32_t> possibleMoves = getAllMoves(board, player);
             return possibleMoves.size() == 0;
         }    
@@ -68,6 +72,7 @@ namespace NETWORK
             undoStack.clear(); 
         }
 
+        uint32_t moveNumber{0};
         uint32_t board_size{1};
         uint32_t depth;
     };

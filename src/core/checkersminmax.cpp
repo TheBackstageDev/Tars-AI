@@ -127,7 +127,7 @@ namespace NETWORK
                 float value = std::get<0>(findBestMove(boardclone, trainingData, !max, currentDepth + 1, alpha, beta));
                 
                 if (!undoStack.empty())
-                    value += static_cast<float>(undoStack.size()) * max ? -1.f : 1.f;
+                    value += static_cast<float>(undoStack.size() * 2.f) * max ? -1.f : 1.f;
 
                 if ((max && value > bestValue) || (!max && value < bestValue))
                 {
@@ -160,41 +160,72 @@ namespace NETWORK
             moveData.data = std::move(boardclone);
             moveData.label = getTrainingLabel(chosenMove);
 
-            trainingData.push_back(std::move(moveData));
+            auto exists = std::find_if(trainingData.begin(), trainingData.end(), 
+            [&](const NTARS::DATA::TrainingData<std::vector<float>>& existingData)
+            {
+                return moveData.data == existingData.data;
+            });
+
+            if (exists == trainingData.end())
+                trainingData.push_back(std::move(moveData));
         }
         
         return {bestValue, chosenMove, chosenPiece};
     }
 
-    float CheckersMinMax::evaluatePosition(const std::vector<float> currentBoard, bool max)
+    const float captureMultiplier = 3.f;
+    const float moveCountMultiplier = 2.f;
+    const float queenValue = 5.f;
+    const uint32_t endGameCount = 6;
+
+    float CheckersMinMax::evaluatePosition(const std::vector<float>& currentBoard, bool max)
     {
-        if (isGameOver(currentBoard, max))
-            return max ? -std::numeric_limits<float>::infinity() : std::numeric_limits<float>::infinity();
+        if (isGameOver(currentBoard, !max))
+            return max ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity();
+    
+        std::pair<std::vector<uint32_t>, std::vector<uint32_t>> minMoves = getAllMovesWithCaptures(currentBoard, false);
+        std::pair<std::vector<uint32_t>, std::vector<uint32_t>> maxMoves = getAllMovesWithCaptures(currentBoard, true);
+    
+        float score = ((float)(maxMoves.first.size() + maxMoves.second.size()) - (float)(minMoves.first.size() + minMoves.second.size())) * moveCountMultiplier;
+        score += max ? (maxMoves.second.size() * captureMultiplier) : -(minMoves.second.size() * captureMultiplier);
 
-        std::vector<uint32_t> minMoves = getAllMoves(currentBoard, false);
-        std::vector<uint32_t> maxMoves = getAllMoves(currentBoard, true);
-
-        float score = ((float)minMoves.size() - (float)maxMoves.size()) * 2.f;
-        
+        uint32_t maxPieceCount = 0;
+        uint32_t minPieceCount = 0;
+        uint32_t maxQueenCount = 0;
+        uint32_t minQueenCount = 0;
+    
         for (int32_t x = 0; x < board_size; ++x)
         {
             for (int32_t y = 0; y < board_size; ++y)
             {
                 const float currentCell = currentBoard[x * board_size + y];
-
+    
                 if (currentCell == 0)
                     continue;
+    
+                bool isMaxPiece = currentCell > 0;
+                bool isCurrentQueen = isQueen(x * board_size + y, currentBoard);
 
-                if (isQueen(x * board_size + y, currentBoard) && currentCell > 0)
-                    score += 3.0f;
-                if (isQueen(x * board_size + y, currentBoard) && currentCell < 0)
-                    score -= 5.0f;
+                isMaxPiece ? maxPieceCount++ : minPieceCount++;
+
+                if (isCurrentQueen)
+                {
+                    isMaxPiece ? maxQueenCount++ : minQueenCount++;
+                    isMaxPiece ? score = queenValue : score -= queenValue;
+                }
             }
         }
-
+        
+        /* END GAME */
+        if (maxPieceCount + minPieceCount <= endGameCount)
+        {
+            if (maxMoves.first.size() + maxMoves.second.size() < 3)
+                score += max ? -queenValue : queenValue;
+        }
+    
         return score;
     }
-
+    
     // Imported from Checkers.cpp
 
     std::vector<uint32_t> CheckersMinMax::getPieces(const std::vector<float> board, bool max)
