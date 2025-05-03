@@ -10,8 +10,8 @@
 #include "ntars/base/data.hpp"
 #include "mnist/mnist_reader.hpp"
 
-#include "checkers.hpp"
-#include "checkersminmax.hpp"
+#include "checkers/checkers.hpp"
+#include "checkers/checkersminmax.hpp"
 
 #include <chrono>
 #include "../config.h"
@@ -157,21 +157,28 @@ namespace core
     void application::run()
     {
         const uint32_t board_size = 8;
-        Checkers checkers(board_size, 70.f);
 
-        NETWORK::CheckersMinMax algorithm(4, board_size);
-        NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
+        Board board{board_size};
+        Checkers checkers(board, 70.f);
+
+        /* NETWORK::CheckersMinMax algorithm(4, board_size);
+        NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; */
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
 
         while (!window->should_close())
         {
-            if (checkers.getAmmountMoves() < 6)
+            /* if (checkers.getAmmountMoves() < 6)
                 algorithm.setNewDepth(6);
 
             if (checkers.getTurn() == false)
             {
+                std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
                 auto move = algorithm.findBestMove(checkers.getCurrentBoard(), trainingData);
+                std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+
+                std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms to find the best move" << std::endl;
+
                 uint32_t moveMoveIndex = std::get<1>(move);
                 uint32_t movePieceIndex = std::get<2>(move);
 
@@ -188,7 +195,7 @@ namespace core
             if (checkers.isGameOver(false))
             {
                 algorithm.resetMoveCount();
-            }
+            } */
 
             glClear(GL_COLOR_BUFFER_BIT);
             imguiNewFrame();

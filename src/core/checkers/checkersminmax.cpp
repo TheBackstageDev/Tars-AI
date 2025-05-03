@@ -115,6 +115,9 @@ namespace NETWORK
                 if (i < captures.size() - 1)
                     handleBoardCaptures(pieceIndex, moveIndex, boardclone, undoStack);
 
+                if (isGameOver(boardclone, !max))
+                    return {max ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity(), pieceIndex, moveIndex};
+            
                 uint32_t pieceNewY = moveIndex % board_size;
                 float& movePiece = boardclone[moveIndex];
         
@@ -127,7 +130,7 @@ namespace NETWORK
                 float value = std::get<0>(findBestMove(boardclone, trainingData, !max, currentDepth + 1, alpha, beta));
                 
                 if (!undoStack.empty())
-                    value += static_cast<float>(undoStack.size() * 2.f) * max ? -1.f : 1.f;
+                    value += static_cast<float>(undoStack.size() * 5.f) * (max ? -1.f : 1.f);
 
                 if ((max && value > bestValue) || (!max && value < bestValue))
                 {
@@ -180,9 +183,6 @@ namespace NETWORK
 
     float CheckersMinMax::evaluatePosition(const std::vector<float>& currentBoard, bool max)
     {
-        if (isGameOver(currentBoard, !max))
-            return max ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity();
-    
         std::pair<std::vector<uint32_t>, std::vector<uint32_t>> minMoves = getAllMovesWithCaptures(currentBoard, false);
         std::pair<std::vector<uint32_t>, std::vector<uint32_t>> maxMoves = getAllMovesWithCaptures(currentBoard, true);
     
@@ -219,7 +219,7 @@ namespace NETWORK
         /* END GAME */
         if (maxPieceCount + minPieceCount <= endGameCount)
         {
-            if (maxMoves.first.size() + maxMoves.second.size() < 3)
+            if (maxMoves.first.size() + maxMoves.second.size() < 5)
                 score += max ? -queenValue : queenValue;
         }
     
