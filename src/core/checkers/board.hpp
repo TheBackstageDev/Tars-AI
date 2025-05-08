@@ -22,7 +22,7 @@ struct Move
 
     static constexpr std::array<int32_t, 4> getMoveOffsets()
     {
-        return {7, 9, -9, -7}; // Diagonal move offsets, [0] = up_left, [1] = up_right, [2] = down_left, [3] = down_right;
+        return {7, -9, -7, 9}; // Diagonal move offsets, [0] = up_left, [1] = up_right, [2] = down_left, [3] = down_right;
     }
 
     constexpr bool operator==(const Move& other) const
@@ -48,20 +48,20 @@ public:
     Board(uint32_t board_size);
     ~Board() = default;
 
-    void makeMove(const Move& move);
-    void unmakeMove(const Move& move);
+    void makeMove(const Move& move, std::vector<float>& board_state);
 
     inline void restart() { initiateBoard(); }
 
     inline uint32_t getSize() { return board_size; }
     inline bool getCurrentTurn() const { return currentTurn; }
-    inline bool isGameOver(bool max)
+    inline bool isGameOver(bool max, std::vector<float>& board_state)
     {
-        return getMoves(max).size() == 0;
+        return getMoves(max, board_state).size() == 0;
     }
 
-    std::vector<Move> getMoves(bool max);
-    std::vector<Move> getMovesForPiece(uint32_t pieceIndex)
+    std::vector<uint32_t> getPieces(bool max, std::vector<float>& board_state);
+    std::vector<Move> getMoves(bool max, std::vector<float>& board_state);
+    std::vector<Move> getMovesForPiece(uint32_t pieceIndex, std::vector<float>& board_state)
     {
         if (!isWithinBounds(pieceIndex))
             return {};
@@ -70,33 +70,56 @@ public:
 
         bool max = board_state[pieceIndex] > 0;
         if (isQueen(pieceIndex))
-            checkMovesQueen(pieceIndex, max, moves);
+            checkMovesQueen(pieceIndex, max, moves, board_state);
         else
-            checkMoves(pieceIndex, max, moves);
+            checkMoves(pieceIndex, max, moves, board_state);
 
         return moves;
     }
     inline std::vector<float>& board() { return board_state; }
+    inline void changeTurn() { currentTurn = !currentTurn; }
 private:
     void initiateBoard();
 
-    bool isWithinBounds(uint32_t index) { return index < board_size * board_size; }
+    bool isWithinBounds(uint32_t index) { return index < board_state.size(); }
     bool isQueen(uint32_t pieceIndex) { return std::abs(board_state[pieceIndex]) == 1; }
 
-    void checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move>& moves);
-    void checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Move>& moves);
+    void checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state);
+    void checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state);
 
-    void checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move>& moves);
-    bool canCapture(const Move& move, bool max);
+    void checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state, int32_t startIndex = -1);
+    bool canCapture(const Move& move, std::vector<float>& board_state, bool max);
 
-    bool handleBoardCaptures(const Move& move);
-    void handleBoardUndoCaptures(const HistoryEntry& entry);
+    bool handleQueenCaptures(const Move& move, std::vector<float>& board_state);
+    bool handleBoardCaptures(const Move& move, std::vector<float>& board_state);
+
+    inline bool isCaptureDistance(uint32_t index1, uint32_t index2)
+    {
+        int32_t x1 = index1 / board_size;
+        int32_t y1 = index1 % board_size;
+
+        int32_t x2 = index2 / board_size;
+        int32_t y2 = index2 % board_size;
+
+        return abs(x2 - x1) == 2 && abs(y2 - y1) == 2;
+    }
+
+    inline float distance(uint32_t index1, uint32_t index2)
+    {
+        int32_t x1 = index1 / board_size;
+        int32_t y1 = index1 % board_size;
+
+        int32_t x2 = index2 / board_size;
+        int32_t y2 = index2 % board_size;
+
+        return sqrtf(powf(x2 - x1, 2) + powf(y2 - y1, 2));
+    }
 
     bool currentTurn{MIN};
     uint32_t board_size{0};
     std::vector<float> board_state;
 
-    std::pair<std::vector<Move>, std::vector<Move>> legalMoves;
+    std::pair<std::vector<Move>, std::vector<Move>> legalMoves; // may use or not
     std::vector<HistoryEntry> moveHistory;
 };
 

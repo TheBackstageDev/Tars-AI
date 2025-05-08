@@ -15,8 +15,8 @@ public:
     void drawBoard();
     void drawInfo();
 
-    bool handleNetworkAction(std::vector<float>& activations);
-    bool handleAction(int32_t pieceIndex, int32_t moveIndex);
+    void handleNetworkAction(std::vector<float>& activations);
+    void handleAction(int32_t pieceIndex, int32_t moveIndex);
 
     inline const int32_t getCellMouseAt(const ImVec2 boardStart) const
     {

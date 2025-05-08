@@ -161,41 +161,34 @@ namespace core
         Board board{board_size};
         Checkers checkers(board, 70.f);
 
-        /* NETWORK::CheckersMinMax algorithm(4, board_size);
-        NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; */
+        NETWORK::CheckersMinMax algorithm(1, board);
+        // NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
 
         while (!window->should_close())
         {
-            /* if (checkers.getAmmountMoves() < 6)
-                algorithm.setNewDepth(6);
-
-            if (checkers.getTurn() == false)
+            if (board.getCurrentTurn() == false)
             {
                 std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-                auto move = algorithm.findBestMove(checkers.getCurrentBoard(), trainingData);
+                auto move = algorithm.findBestMove(board.board(), trainingData, true).second;
                 std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
-                std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms to find the best move" << std::endl;
-
-                uint32_t moveMoveIndex = std::get<1>(move);
-                uint32_t movePieceIndex = std::get<2>(move);
-
-                checkers.handleAction(movePieceIndex, moveMoveIndex);
+                board.makeMove(move, board.board());
                 algorithm.incrementMoveCount();
+                board.changeTurn();
             } 
-            else if (!checkers.isGameOver(true))
+/*             else if (!checkers.isGameOver(true))
             {
-                std::vector<float> activations = network.run(checkers.getCurrentBoard());
+                std::vector<float> activations = network.run(board.board());
                 checkers.handleNetworkAction(activations);
                 algorithm.incrementMoveCount();
-            }
+            } */
 
-            if (checkers.isGameOver(false))
+            if (board.isGameOver(board.getCurrentTurn(), board.board()))
             {
                 algorithm.resetMoveCount();
-            } */
+            }
 
             glClear(GL_COLOR_BUFFER_BIT);
             imguiNewFrame();

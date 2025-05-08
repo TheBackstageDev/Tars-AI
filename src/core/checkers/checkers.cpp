@@ -42,7 +42,7 @@ bool isClicked(const ImVec2 center, const float tile_size)
 int32_t currentSelectedPiece{-1};
 std::vector<Move> movesPossibleCurrentPiece{};
 
-bool Checkers::handleNetworkAction(std::vector<float>& activations)
+void Checkers::handleNetworkAction(std::vector<float>& activations)
 {
     /* uint32_t moveIndex = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
     int32_t pieceIndex = -1;
@@ -74,18 +74,26 @@ bool Checkers::handleNetworkAction(std::vector<float>& activations)
             moveIndex = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
         }
     } */
-
-    return false;
 }
 
-bool Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
+void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 {
-    return false;
+    if (pieceIndex == -1 || moveIndex == -1 || pieceIndex == moveIndex)
+        return;
+
+    Move moveToMake{(uint32_t)pieceIndex, (uint32_t)moveIndex};
+    if (std::find(movesPossibleCurrentPiece.begin(), movesPossibleCurrentPiece.end(), moveToMake) != movesPossibleCurrentPiece.end())
+    {
+        board.makeMove(moveToMake, board.board());
+        board.changeTurn();
+        movesPossibleCurrentPiece = {};
+        currentSelectedPiece = -1;
+    }
 }
 
 void Checkers::drawGameOverScreen()
 {
-    if (board.isGameOver(board.getCurrentTurn())) 
+    if (board.isGameOver(board.getCurrentTurn(), board.board())) 
     {
         ImGui::OpenPopup("Game Over");
 
@@ -133,7 +141,7 @@ void Checkers::drawBoard()
          (!currentTurn == true && board_state[moveIndex] < 0)))
     {
         currentSelectedPiece = moveIndex;
-        movesPossibleCurrentPiece = board.getMovesForPiece(currentSelectedPiece);
+        movesPossibleCurrentPiece = board.getMovesForPiece(currentSelectedPiece, board.board());
     }
 
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
