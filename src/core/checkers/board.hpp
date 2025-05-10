@@ -22,23 +22,12 @@ struct Move
 
     static constexpr std::array<int32_t, 4> getMoveOffsets()
     {
-        return {7, -9, -7, 9}; // Diagonal move offsets, [0] = up_left, [1] = up_right, [2] = down_left, [3] = down_right;
+        return {-9, 7, 9, -7}; // Diagonal move offsets, [0] = up_left, [1] = up_right, [2] = down_left, [3] = down_right;
     }
 
     constexpr bool operator==(const Move& other) const
     {
         return startPos == other.startPos && endPos == other.endPos;
-    }
-};
-
-struct HistoryEntry
-{
-    Move move;
-    std::vector<float> piecesCaptured{};
-
-    constexpr bool operator==(const HistoryEntry& other) const
-    {
-        return move == other.move && piecesCaptured == other.piecesCaptured;
     }
 };
 
@@ -81,46 +70,40 @@ public:
 private:
     void initiateBoard();
 
-    bool isWithinBounds(uint32_t index) { return index < board_state.size(); }
+    bool isWithinBounds(uint32_t index) 
+    { 
+        return index < board_state.size(); 
+    }
     bool isQueen(uint32_t pieceIndex) { return std::abs(board_state[pieceIndex]) == 1; }
 
     void checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state);
     void checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state);
 
-    void checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state, int32_t startIndex = -1);
+    void checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state, int32_t startIndex = -1, std::vector<uint32_t> visited = {});
     bool canCapture(const Move& move, std::vector<float>& board_state, bool max);
 
-    bool handleQueenCaptures(const Move& move, std::vector<float>& board_state);
-    bool handleBoardCaptures(const Move& move, std::vector<float>& board_state);
+    void checkDirectionsEnabled(const uint32_t pieceIndex, std::vector<int32_t>& directions);
+    void handleQueenCaptures(const Move& move, std::vector<float>& board_state);
+    void handleBoardCaptures(const Move& move, std::vector<float>& board_state);
 
     inline bool isCaptureDistance(uint32_t index1, uint32_t index2)
     {
-        int32_t x1 = index1 / board_size;
-        int32_t y1 = index1 % board_size;
-
-        int32_t x2 = index2 / board_size;
-        int32_t y2 = index2 % board_size;
-
-        return abs(x2 - x1) == 2 && abs(y2 - y1) == 2;
+        return abs(getX(index2) - getX(index1)) == 2 && abs(getY(index2) - getY(index1)) == 2;
     }
 
     inline float distance(uint32_t index1, uint32_t index2)
     {
-        int32_t x1 = index1 / board_size;
-        int32_t y1 = index1 % board_size;
-
-        int32_t x2 = index2 / board_size;
-        int32_t y2 = index2 % board_size;
-
-        return sqrtf(powf(x2 - x1, 2) + powf(y2 - y1, 2));
+        return sqrtf(powf(getX(index2) - getX(index1), 2) + powf(getY(index2) - getY(index1), 2));
     }
+
+    inline int32_t getY(int32_t index) { return (index % board_size); }
+    inline int32_t getX(int32_t index) { return (index / board_size); }
 
     bool currentTurn{MIN};
     uint32_t board_size{0};
     std::vector<float> board_state;
 
     std::pair<std::vector<Move>, std::vector<Move>> legalMoves; // may use or not
-    std::vector<HistoryEntry> moveHistory;
 };
 
 #endif //BOARD_HPP

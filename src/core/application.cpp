@@ -162,13 +162,13 @@ namespace core
         Checkers checkers(board, 70.f);
 
         NETWORK::CheckersMinMax algorithm(1, board);
-        // NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
+        NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
 
         while (!window->should_close())
         {
-            if (board.getCurrentTurn() == false)
+/*             if (board.getCurrentTurn() == false)
             {
                 std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
                 auto move = algorithm.findBestMove(board.board(), trainingData, true).second;
@@ -177,13 +177,7 @@ namespace core
                 board.makeMove(move, board.board());
                 algorithm.incrementMoveCount();
                 board.changeTurn();
-            } 
-/*             else if (!checkers.isGameOver(true))
-            {
-                std::vector<float> activations = network.run(board.board());
-                checkers.handleNetworkAction(activations);
-                algorithm.incrementMoveCount();
-            } */
+            } */ 
 
             if (board.isGameOver(board.getCurrentTurn(), board.board()))
             {

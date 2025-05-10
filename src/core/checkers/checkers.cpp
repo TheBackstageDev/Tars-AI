@@ -175,7 +175,7 @@ void Checkers::drawBoard()
             {
                 for (const auto& move : movesPossibleCurrentPiece)
                     if (move.startPos == pieceIndex || move.endPos == pieceIndex)
-                        color *= 2;
+                        color = ((x + y) % 2 == 0) ? BOARD_LIGHT * 2 : BOARD_DARK * 2;
 
                 drawlist->AddRectFilled(top_left, bottom_right, color);
             }
