@@ -179,11 +179,6 @@ namespace core
                 board.changeTurn();
             } */ 
 
-            if (board.isGameOver(board.getCurrentTurn(), board.board()))
-            {
-                algorithm.resetMoveCount();
-            }
-
             glClear(GL_COLOR_BUFFER_BIT);
             imguiNewFrame();
 

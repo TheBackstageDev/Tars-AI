@@ -81,11 +81,14 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
     if (pieceIndex == -1 || moveIndex == -1 || pieceIndex == moveIndex)
         return;
 
-    Move moveToMake{(uint32_t)pieceIndex, (uint32_t)moveIndex};
-    if (std::find(movesPossibleCurrentPiece.begin(), movesPossibleCurrentPiece.end(), moveToMake) != movesPossibleCurrentPiece.end())
+    auto moveToMake = std::find_if(movesPossibleCurrentPiece.begin(), movesPossibleCurrentPiece.end(), 
+        [&](const Move& a){ return a.startPos == pieceIndex && a.endPos == moveIndex; });
+
+    if (moveToMake != movesPossibleCurrentPiece.end())
     {
-        board.makeMove(moveToMake, board.board());
+        board.makeMove(*moveToMake, board.board());
         board.changeTurn();
+        
         movesPossibleCurrentPiece = {};
         currentSelectedPiece = -1;
     }

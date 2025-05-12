@@ -14,9 +14,6 @@ Board::Board(uint32_t board_size)
 
 void Board::initiateBoard()
 {
-    legalMoves.first.clear();
-    legalMoves.second.clear();
-
     for (int x = 0; x < board_size; ++x)
     {
         for (int y = 0; y < board_size; ++y)
@@ -39,90 +36,13 @@ void Board::initiateBoard()
     }
 }
 
-void Board::handleQueenCaptures(const Move &move, std::vector<float>& board_state)
+void Board::makeMove(const Move &move, std::vector<float> &board_state)
 {
-    std::vector<float> captureSaving{};
-    std::vector<Move> captures{};
-
-    uint32_t currentCaptureIndex = move.startPos;
-    checkCaptures(currentCaptureIndex, board_state[currentCaptureIndex] > 0, captures, board_state);
-
-    while (!captures.empty() && currentCaptureIndex != move.endPos)
-    {
-        uint32_t nextMove = captures.front().endPos;
-        captures.erase(captures.begin());
-
-        int32_t dx = (nextMove / board_size > currentCaptureIndex / board_size) ? 0 : 1;
-        int32_t dy = (nextMove % board_size > currentCaptureIndex % board_size) ? 0 : 1;
-
-        int32_t x = currentCaptureIndex / board_size;
-        int32_t y = currentCaptureIndex % board_size;
-
-        while (isWithinBounds(x * board_size + y) && (x != move.endPos / board_size || y != move.endPos % board_size))
-        {
-            uint32_t currentIndex = x * board_size + y;
-
-            if (board_state[currentIndex] != 0)
-            {
-                captureSaving.push_back(board_state[currentIndex]);
-                board_state[currentIndex] = 0;
-                break;
-            }
-
-            x += dx;
-            y += dy;
-        }
-
-        checkCaptures(currentCaptureIndex, board_state[currentCaptureIndex] > 0, captures, board_state);
-    }
-}
-
-void Board::handleBoardCaptures(const Move &move, std::vector<float>& board_state)
-{
-    std::vector<float> captureSaving;
-    uint32_t dist = distance(move.startPos, move.endPos);
-
-    if (isCaptureDistance(move.startPos, move.endPos))
-    {
-        uint32_t midIndex = (move.startPos + move.endPos) / 2;
-        captureSaving.push_back(board_state[midIndex]);
-
-        board_state[midIndex] = 0;
-    }
-    else if (dist > 2)
-    {
-        std::vector<Move> captures{};
-
-        uint32_t currentCaptureIndex = move.startPos;
-        checkCaptures(currentCaptureIndex, board_state[currentCaptureIndex] > 0, captures, board_state);
-
-        while (!captures.empty() && currentCaptureIndex != move.endPos)
-        {
-            uint32_t nextMove = captures.front().endPos;
-            captures.erase(captures.begin());
-
-            uint32_t midIndex = (currentCaptureIndex + nextMove) / 2;
-            captureSaving.push_back(board_state[midIndex]);
-
-            board_state[midIndex] = 0;
-
-            currentCaptureIndex = nextMove;
-
-            checkCaptures(currentCaptureIndex, board_state[currentCaptureIndex] > 0, captures, board_state);
-        }
-    }
-    else if (dist > 2 && isQueen(move.startPos))
-    {
-        return handleQueenCaptures(move, board_state);
-    }
-}
-
-void Board::makeMove(const Move &move, std::vector<float>& board_state)
-{
-    handleBoardCaptures(move, board_state);
-
     board_state[move.endPos] = board_state[move.startPos];
     board_state[move.startPos] = 0;
+
+    for (uint32_t index : move.middlePositions)
+        board_state[index] = 0;
 
     if ((board_state[move.endPos] == -0.5 && move.endPos % board_size == 0) ||           // PLR reaches top row
         (board_state[move.endPos] == 0.5 && move.endPos % board_size == board_size - 1)) // BOT reaches bottom row
@@ -131,12 +51,12 @@ void Board::makeMove(const Move &move, std::vector<float>& board_state)
     }
 }
 
-bool Board::canCapture(const Move &move, std::vector<float>& board_state, bool max)
+bool Board::canCapture(const Move &move, std::vector<float> &board_state, bool max)
 {
     if (!isWithinBounds(move.startPos) || !isWithinBounds(move.endPos) || board_state[move.endPos] != 0)
         return false;
 
-    uint32_t midIndex = (move.startPos + move.endPos) / 2;
+    uint32_t midIndex = GET_MIDDLE(move.startPos, move.endPos);
     float targetPiece = board_state[midIndex];
 
     if (targetPiece == 0 || (targetPiece > 0 == max))
@@ -145,7 +65,7 @@ bool Board::canCapture(const Move &move, std::vector<float>& board_state, bool m
     return isCaptureDistance(move.startPos, move.endPos);
 }
 
-std::vector<uint32_t> Board::getPieces(bool max, std::vector<float>& board_state)
+std::vector<uint32_t> Board::getPieces(bool max, std::vector<float> &board_state)
 {
     std::vector<uint32_t> pieceIndices{};
 
@@ -162,7 +82,7 @@ std::vector<uint32_t> Board::getPieces(bool max, std::vector<float>& board_state
     return pieceIndices;
 }
 
-std::vector<Move> Board::getMoves(bool max, std::vector<float>& board_state)
+std::vector<Move> Board::getMoves(bool max, std::vector<float> &board_state)
 {
     std::vector<Move> moves{};
 
@@ -182,32 +102,35 @@ std::vector<Move> Board::getMoves(bool max, std::vector<float>& board_state)
     return moves;
 }
 
-void Board::checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move> &moves, std::vector<float>& board_state, int32_t startIndex, std::vector<uint32_t> visited)
+void Board::checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move> &moves, std::vector<float> &board_state, int32_t origin, std::vector<uint32_t> middleIndices)
 {
     for (int32_t d : Move::getMoveOffsets())
     {
+        const int32_t originIndex = origin != -1 ? origin : pieceIndex;
         const uint32_t targetIndex = pieceIndex + d * 2;
+        const int32_t midIndex = GET_MIDDLE(pieceIndex, targetIndex);
 
-        if (std::find(visited.begin(), visited.end(), targetIndex) != visited.end())
+        if (targetIndex == originIndex || std::find(middleIndices.begin(), middleIndices.end(), midIndex) != middleIndices.end())
             continue;
 
-        int32_t originIndex = startIndex != -1 ? startIndex : pieceIndex;
-        Move moveToCheck{pieceIndex, targetIndex};
+        Move moveToCheck{pieceIndex, targetIndex, middleIndices};
+        moveToCheck.middlePositions.push_back(midIndex);
 
-        if (canCapture(moveToCheck, board_state, max) && std::find(moves.begin(), moves.end(), moveToCheck) == moves.end())
+        if (canCapture(moveToCheck, board_state, max))
         {
-            std::vector<uint32_t> visitedCells = visited;
-            visited.push_back(targetIndex);
-
             moveToCheck.startPos = originIndex;
+
+            if (std::find(moves.begin(), moves.end(), moveToCheck) != moves.end())
+                continue;
+
             moves.push_back(moveToCheck);
 
-            checkCaptures(moveToCheck.endPos, max, moves, board_state, originIndex, visited);
+            checkCaptures(moveToCheck.endPos, max, moves, board_state, originIndex, moveToCheck.middlePositions);
         }
     }
 }
 
-void Board::checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move> &moves, std::vector<float>& board_state)
+void Board::checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move> &moves, std::vector<float> &board_state)
 {
     for (int32_t d = 0; d < 2; ++d)
     {
@@ -222,27 +145,31 @@ void Board::checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move> &m
     }
 }
 
-void Board::checkDirectionsEnabled(const uint32_t pieceIndex, std::vector<int32_t>& directions)
+void Board::checkDirectionsEnabled(const uint32_t pieceIndex, std::vector<int32_t> &directions)
 {
     std::array<int32_t, 4> offsets = Move::getMoveOffsets();
 
     uint32_t row = getY(pieceIndex); // Rows are Y-coordinates
     uint32_t col = getX(pieceIndex); // Columns are X-coordinates
 
-    if (row > 0) 
+    if (row > 0)
     {
-        if (col > 0) directions.push_back(offsets[UP_LEFT]);  
-        if (col < board_size - 1) directions.push_back(offsets[UP_RIGHT]); 
+        if (col > 0)
+            directions.push_back(offsets[UP_LEFT]);
+        if (col < board_size - 1)
+            directions.push_back(offsets[UP_RIGHT]);
     }
 
-    if (row < board_size - 1) 
+    if (row < board_size - 1)
     {
-        if (col > 0) directions.push_back(offsets[DOWN_RIGHT]);  
-        if (col < board_size - 1) directions.push_back(offsets[DOWN_LEFT]); 
+        if (col > 0)
+            directions.push_back(offsets[DOWN_RIGHT]);
+        if (col < board_size - 1)
+            directions.push_back(offsets[DOWN_LEFT]);
     }
 }
 
-void Board::checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Move> &moves, std::vector<float>& board_state)
+void Board::checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Move> &moves, std::vector<float> &board_state)
 {
     std::vector<int32_t> directions;
     checkDirectionsEnabled(pieceIndex, directions);
@@ -253,7 +180,7 @@ void Board::checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Mov
         bool foundPiece = false;
 
         while (true)
-        {   
+        {
             currentPos += d;
 
             uint32_t newRow = getY(currentPos);
@@ -268,9 +195,18 @@ void Board::checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Mov
             }
             else
             {
-                checkCaptures(currentPos - d, board_state[pieceIndex] > 0, moves, board_state);    
-                foundPiece = true;
+                uint32_t captureCheckPos = currentPos - d;
+                uint32_t capturePos = currentPos + d;
 
+                if (canCapture(Move{captureCheckPos, capturePos}, board_state, max))
+                {
+                    Move captureOne{pieceIndex, capturePos, {GET_MIDDLE(captureCheckPos, capturePos)}};
+                    moves.push_back(captureOne);
+
+                    checkCaptures(capturePos, max, moves, board_state);
+                }
+
+                foundPiece = true;
                 break;
             }
 

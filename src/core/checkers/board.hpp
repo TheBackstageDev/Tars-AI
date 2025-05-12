@@ -9,6 +9,8 @@
 #define MAX true
 #define MIN false
 
+#define GET_MIDDLE(x, y) ((x + y) / 2)
+
 // Moves
 #define UP_LEFT 0
 #define UP_RIGHT 1
@@ -19,6 +21,7 @@ struct Move
 {
     uint32_t startPos;
     uint32_t endPos;
+    std::vector<uint32_t> middlePositions;
 
     static constexpr std::array<int32_t, 4> getMoveOffsets()
     {
@@ -27,7 +30,7 @@ struct Move
 
     constexpr bool operator==(const Move& other) const
     {
-        return startPos == other.startPos && endPos == other.endPos;
+        return startPos == other.startPos && endPos == other.endPos && other.middlePositions == middlePositions;
     }
 };
 
@@ -79,12 +82,10 @@ private:
     void checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state);
     void checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state);
 
-    void checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state, int32_t startIndex = -1, std::vector<uint32_t> visited = {});
+    void checkCaptures(const uint32_t pieceIndex, bool max, std::vector<Move>& moves, std::vector<float>& board_state, int32_t origin = -1, std::vector<uint32_t> middleIndices = {});
     bool canCapture(const Move& move, std::vector<float>& board_state, bool max);
 
     void checkDirectionsEnabled(const uint32_t pieceIndex, std::vector<int32_t>& directions);
-    void handleQueenCaptures(const Move& move, std::vector<float>& board_state);
-    void handleBoardCaptures(const Move& move, std::vector<float>& board_state);
 
     inline bool isCaptureDistance(uint32_t index1, uint32_t index2)
     {
@@ -102,8 +103,6 @@ private:
     bool currentTurn{MIN};
     uint32_t board_size{0};
     std::vector<float> board_state;
-
-    std::pair<std::vector<Move>, std::vector<Move>> legalMoves; // may use or not
 };
 
 #endif //BOARD_HPP
