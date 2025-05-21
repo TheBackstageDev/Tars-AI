@@ -7,6 +7,7 @@
 #include <vector>
 #include <assert.h>
 #include <stdexcept>
+#include <omp.h>
 
 namespace TMATH
 {
@@ -258,7 +259,6 @@ namespace TMATH
         
             return result;
         }
-
         Matrix_t<T> elementWiseDivision(const Matrix_t<T>& otherMatrix) const
         {
             assert((rows_ == otherMatrix.rows_ && cols_ == otherMatrix.cols_) && "Matrix dimensions must agree for element-wise multiplication");
@@ -273,7 +273,6 @@ namespace TMATH
         
             return result;
         }
-
 
         Matrix_t<T> sqrt()
         {

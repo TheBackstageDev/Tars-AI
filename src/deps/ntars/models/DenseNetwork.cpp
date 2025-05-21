@@ -209,10 +209,15 @@ namespace NTARS
         }
     }
 
-    float DenseNeuralNetwork::train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate)
+    void DenseNeuralNetwork::train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate)
     {
-        int numCorrect{0};
-        int numWrong{0};
+
+    }
+
+    float DenseNeuralNetwork::trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate)
+    {
+        int32_t numCorrect{0};
+        int32_t numWrong{0};
 
         for (size_t l = 0; l < _layers.size(); ++l)
         {
@@ -225,7 +230,7 @@ namespace NTARS
             std::vector<float> outputs = runInternal(train_data.data);
             std::vector<float> expected = train_data.label;
 
-            const int expectedLabel = std::distance(expected.begin(), std::find(expected.begin(), expected.end(), 1));
+            const int32_t expectedLabel = std::distance(expected.begin(), std::find(expected.begin(), expected.end(), 1));
 
             TMATH::Matrix_t<float> outputDelta(outputs.size(), 1);
             for (size_t i = 0; i < outputs.size(); ++i)

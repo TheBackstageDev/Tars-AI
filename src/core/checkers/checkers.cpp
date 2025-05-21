@@ -44,36 +44,12 @@ std::vector<Move> movesPossibleCurrentPiece{};
 
 void Checkers::handleNetworkAction(std::vector<float>& activations)
 {
-    /* uint32_t moveIndex = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
-    int32_t pieceIndex = -1;
+    std::vector<float> board_state = board.board();
+    Move selectedMove;
+    bool foundValidMove = false;
 
-    std::unordered_map<uint32_t, std::unordered_set<uint32_t>> pieceMovesMap;
-    for (uint32_t validatingPieceIndex : board.getMoves(true)) 
-    {
-        std::vector<uint32_t> possibleMoves = getPossiblePieceMovesVector(validatingPieceIndex);
-        pieceMovesMap[validatingPieceIndex] = std::unordered_set<uint32_t>(possibleMoves.begin(), possibleMoves.end());
-    }
-
-    if (pieceMovesMap.size() == 0)
-        return false;
-
-    while (pieceIndex == -1 && !activations.empty())
-    {
-        for (const auto& [validatingPieceIndex, moves] : pieceMovesMap) 
-        {
-            if (moves.find(moveIndex) != moves.end() && board_state[validatingPieceIndex] > 0) 
-            {
-                pieceIndex = validatingPieceIndex;
-                break;
-            }
-        }  
-
-        if (pieceIndex == -1) 
-        {
-            activations[moveIndex] = 0.f;
-            moveIndex = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
-        }
-    } */
+    board.makeMove(selectedMove, board_state);
+    board.changeTurn();
 }
 
 void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
@@ -96,7 +72,7 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
 
 void Checkers::drawGameOverScreen()
 {
-    if (board.isGameOver(board.getCurrentTurn(), board.board())) 
+    if (board.isGameOver(board.getCurrentTurn(), board.board()) || board.isGameOver(!board.getCurrentTurn(), board.board())) 
     {
         ImGui::OpenPopup("Game Over");
 

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <functional>
 #include <cstdlib>
+#include <limits>
 #include "ntars/base/data.hpp"
 #include "board.hpp"
 
@@ -14,16 +15,22 @@ namespace NETWORK
     {
     public:
         CheckersMinMax(uint32_t depth, Board& board);
-        
-        std::pair<float, Move> findBestMove(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max = false, uint32_t currentDepth = 0, float alpha = -1, float beta = -1);
 
         inline void setNewDepth(uint32_t depth) { this->depth = depth; }
         inline void incrementMoveCount() { moveNumber++; }
         inline void resetMoveCount() { moveNumber = 0; }
-    private:
-        float evaluatePosition(std::vector<float>& currentBoard, bool max);
+        inline uint32_t getCheckedMoveCount() { return checkedMoves; }
 
+        Move getBestMove(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max);
+    private:
+
+        std::pair<uint32_t, Move> minimax(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData,
+             bool max = false, uint32_t currentDepth = 0, int32_t alpha = -std::numeric_limits<int32_t>::max(), int32_t beta = std::numeric_limits<int32_t>::max());
+        uint32_t evaluatePosition(std::vector<float>& currentBoard, bool max);
         std::vector<float> getTrainingLabel(uint32_t moveIndex);
+
+        uint32_t valueMove(std::vector<float>& board_state, const Move& move);
+        void sortMoves(std::vector<float>& board_state, std::vector<Move>& moves);
   
         bool isGameOver(std::vector<float>& board_state, bool max)
         {
@@ -37,6 +44,7 @@ namespace NETWORK
 
         uint32_t moveNumber{0};
         uint32_t depth;
+        uint32_t checkedMoves{0};
     };
 } // namespace NETWORK
 

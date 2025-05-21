@@ -21,12 +21,16 @@ namespace NTARS
         ~DenseNeuralNetwork();
 
         std::vector<float> run(const std::vector<float>& inputs);
-        float train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
+        float trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
+        void train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
 
         void save();
 
         inline std::vector<size_t> getStructure() const { return _structure; }
         inline std::vector<DenseLayer>& getLayers() { return _layers; }
+
+        inline std::vector<TMATH::Matrix_t<float>> getWeights() { return weights; }
+        inline std::vector<TMATH::Matrix_t<float>> getBiases() { return biases; }
 
         void drawNetwork(bool partial);
     private:

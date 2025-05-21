@@ -19,40 +19,6 @@ namespace TCUDA
         }
     }
 
-/*  uses Cuda Cores  
- bool matrixMultiply(double* x, double* y, double* result, int rowsX, int colsX, int colsY) 
-    {
-        double *d_x, *d_y, *d_result;
-        size_t sizeX = rowsX * colsX * sizeof(double);
-        size_t sizeY = colsX * colsY * sizeof(double);
-        size_t sizeResult = rowsX * colsY * sizeof(double);
-    
-        CUDA_CHECK(cudaMalloc(&d_x, sizeX));
-        CUDA_CHECK(cudaMalloc(&d_y, sizeY));
-        CUDA_CHECK(cudaMalloc(&d_result, sizeResult));
-    
-        CUDA_CHECK(cudaMemcpy(d_x, x, sizeX, cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(d_y, y, sizeY, cudaMemcpyHostToDevice));
-    
-        dim3 blockDim(16, 16);
-        dim3 gridDim((colsY + 15) / 16, (rowsX + 15) / 16);
-        matrixMultiplyKernel<<<gridDim, blockDim>>>(d_x, d_y, d_result, rowsX, colsX, colsY);
-
-        CUDA_CHECK(cudaMemcpy(result, d_result, sizeResult, cudaMemcpyDeviceToHost));
-
-        cudaFree(d_x);
-        cudaFree(d_y);
-        cudaFree(d_result);
-
-        cudaError_t err = cudaGetLastError();
-        if (err != cudaSuccess) {
-            std::cerr << "Kernel execution failed: " << cudaGetErrorString(err) << std::endl;
-            return false;
-        }
-    
-        return true; 
-    } */
-
     void swapValue(int& val1, int& val2)
     {
         int temp = val1;
@@ -78,9 +44,9 @@ namespace TCUDA
         size_t sizeY = colsX * colsY * sizeof(float);
         size_t sizeResult = rowsX * colsY * sizeof(float);
 
-        CUDA_CHECK(cudaMalloc(&d_a, sizeX)); 
-        CUDA_CHECK(cudaMalloc(&d_b, sizeY));
-        CUDA_CHECK(cudaMalloc(&d_result, sizeResult));
+        CUDA_CHECK(cudaMallocManaged(&d_a, sizeX)); 
+        CUDA_CHECK(cudaMallocManaged(&d_b, sizeY));
+        CUDA_CHECK(cudaMallocManaged(&d_result, sizeResult));
         
         CUDA_CHECK(cudaMemcpy(d_a, x, sizeX, cudaMemcpyHostToDevice));
         CUDA_CHECK(cudaMemcpy(d_b, y, sizeY, cudaMemcpyHostToDevice));
@@ -92,6 +58,8 @@ namespace TCUDA
         cublasOperation_t opY = transposeY ? CUBLAS_OP_T : CUBLAS_OP_N;
 
         CUBLAS_CHECK(cublasSgemm_v2(cublasHandle, opX, opY, colsY, rowsX, colsX, &alpha, d_b, colsY, d_a, colsX, &beta, d_result, colsY));
+        cudaDeviceSynchronize();
+
         CUDA_CHECK(cudaMemcpy(result, d_result, sizeResult, cudaMemcpyDeviceToHost));
 
         CUDA_CHECK(cudaFree(d_a));
@@ -114,9 +82,9 @@ namespace TCUDA
     
         size_t dataSize = size * sizeof(float);
     
-        CUDA_CHECK(cudaMalloc(&d_a, dataSize));
-        CUDA_CHECK(cudaMalloc(&d_b, dataSize));
-        CUDA_CHECK(cudaMalloc(&d_result, dataSize));
+        CUDA_CHECK(cudaMallocManaged(&d_a, dataSize));
+        CUDA_CHECK(cudaMallocManaged(&d_b, dataSize));
+        CUDA_CHECK(cudaMallocManaged(&d_result, dataSize));
 
         CUDA_CHECK(cudaMemcpy(d_a, x, dataSize, cudaMemcpyHostToDevice));
         CUDA_CHECK(cudaMemcpy(d_b, y, dataSize, cudaMemcpyHostToDevice));
@@ -136,6 +104,7 @@ namespace TCUDA
             d_a, 1,                                // Input vector x (diagonal-like input)
             d_result, size                         // Resulting output matrix
         ));
+        cudaDeviceSynchronize();
 
         CUDA_CHECK(cudaMemcpy(result, d_result, dataSize, cudaMemcpyDeviceToHost));
 

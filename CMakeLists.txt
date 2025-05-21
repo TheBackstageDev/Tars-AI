@@ -14,6 +14,13 @@ add_subdirectory(deps)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp src/*.hpp src/*.cu)
 
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+  message("OpenMP found.")
+else()
+  message(WARNING "OpenMP not found.")
+endif()
+
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
 target_compile_options(${PROJECT_NAME} PUBLIC
@@ -36,6 +43,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     opengl32
     imgui
     ${CUDA_LIBRARIES}
+    OpenMP::OpenMP_CXX
     cublas                     
 )
 

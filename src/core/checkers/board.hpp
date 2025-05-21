@@ -17,11 +17,20 @@
 #define DOWN_LEFT 2
 #define DOWN_RIGHT 3
 
+enum class MoveFlag
+{
+    NONE,
+    CAPTURE,
+    MULTICAPTURE,
+    PROMOTION
+};
+
 struct Move
 {
     uint32_t startPos;
     uint32_t endPos;
     std::vector<uint32_t> middlePositions;
+    MoveFlag flag{MoveFlag::NONE};
 
     static constexpr std::array<int32_t, 4> getMoveOffsets()
     {
@@ -70,6 +79,9 @@ public:
     }
     inline std::vector<float>& board() { return board_state; }
     inline void changeTurn() { currentTurn = !currentTurn; }
+
+    inline int32_t getY(int32_t index) { return (index % board_size); }
+    inline int32_t getX(int32_t index) { return (index / board_size); }
 private:
     void initiateBoard();
 
@@ -96,9 +108,6 @@ private:
     {
         return sqrtf(powf(getX(index2) - getX(index1), 2) + powf(getY(index2) - getY(index1), 2));
     }
-
-    inline int32_t getY(int32_t index) { return (index % board_size); }
-    inline int32_t getX(int32_t index) { return (index / board_size); }
 
     bool currentTurn{MIN};
     uint32_t board_size{0};
