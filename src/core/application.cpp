@@ -220,15 +220,27 @@ namespace core
 
             drawNetwork();
 
+            // Where it'll control what'll happen in the AI Network Demonstration
             ImGui::Begin("Controllers", nullptr);
+                if (ImGui::Button("Run Network", ImVec2(150, 50)))
+                {
+                    
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Choose Random Data", ImVec2(150, 50)))
+                {
 
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Start Training", ImVec2(150, 50)))
+                {
+
+                }
             ImGui::End();
-
         ImGui::End();
     }
 
-    int32_t xpad = 5;
-    int32_t ypad = 5;
+    const size_t displayAmmount = 20;
 
     void application::drawNetwork()
     {
@@ -236,34 +248,65 @@ namespace core
      
         ImDrawList* drawlist = ImGui::GetWindowDrawList();
         std::vector<size_t> structure = numberNetwork.getStructure();
-    
-        ImGui::SliderInt("x padding", &xpad, 1, 50, "%d");
-        ImGui::SliderInt("y padding", &ypad, 1, 50, "%d");
+        auto& weights = numberNetwork.getWeights();
 
-        float totalWidth = ImGui::GetWindowWidth();
-        float layerSpacing = totalWidth / (structure.size() + 1) * xpad;
-
+        ImVec2 windowSize = ImGui::GetWindowSize();
         ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 center(ImGui::GetWindowWidth() - windowPos.x, ImGui::GetWindowHeight() - windowPos.y);
+        ImVec2 center(windowPos.x + windowSize.x, windowPos.y + windowSize.y * 0.5);
 
-        ImVec2 left(center.x - center.x / 2, center.y);
+        float layerSpacing = windowSize.x / (structure.size() + 1);
+        float maxNeurons = *std::max_element(structure.begin(), structure.end());
+
+        maxNeurons = maxNeurons > displayAmmount + 10 ? displayAmmount + 10 : maxNeurons;
+
+        float neuronSpacing = (windowSize.y * 0.9) / (maxNeurons + 1);  
 
         for (int32_t i = 0; i < structure.size(); ++i)
         {
             size_t neurons = structure[i];
 
-            float layerX = center.x - totalWidth * 0.5f + (i + 1) * layerSpacing;
+            float layerX = center.x - windowSize.x + (i + 1) * layerSpacing;
             float layerY = center.y;
 
             for (size_t n = 0; n < neurons; ++n)
             {
-                float neuronY = layerY + (n - neurons / 2.0f) * ypad;
+                if (i == 0 && neurons > displayAmmount && (n >= displayAmmount / 2 && n < neurons - displayAmmount / 2))
+                {
+                    if (n > displayAmmount && n < neurons - displayAmmount)
+                        continue;
+
+                    float dotsY = layerY + (n - (neurons > 30 ? maxNeurons : neurons) / 2.0f) * neuronSpacing;
+                    float dotSpacing = 8.f; 
+                    ImVec2 dotStart(layerX - 5.f, dotsY);
+
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        ImVec2 dotPosition(dotStart.x + i * dotSpacing, dotStart.y);
+                        drawlist->AddCircleFilled(dotPosition, 2.f, IM_COL32(255, 255, 255, 255));
+                    }
+
+                    continue;
+                }
+
+                float neuronY = layerY + (n - (neurons > 30 ? maxNeurons : neurons) / 2.0f) * neuronSpacing;
 
                 ImVec2 neuronPosition(layerX, neuronY);
-                drawlist->AddCircleFilled(neuronPosition, 10.f, IM_COL32(255, 255, 255, 255));
+                drawlist->AddCircleFilled(neuronPosition, 5.f, IM_COL32(255, 255, 255, 255));
+
+                if (i < structure.size() - 1)
+                {
+                    float nextLayerX = center.x - windowSize.x + (i + 2) * layerSpacing;
+                    size_t nextNeurons = structure[i + 1];
+                    for (int32_t j = 0; j < nextNeurons; ++j)
+                    {
+                        float nextNeuronY = layerY + (j - (nextNeurons > 30 ? maxNeurons : nextNeurons) / 2.0f) * neuronSpacing;
+                        ImVec2 nextNeuronPos(nextLayerX, nextNeuronY);
+                        drawlist->AddLine(neuronPosition, nextNeuronPos, IM_COL32(255, 255, 255, 120), 0.5f);
+                    }
+                }
             }
         }
-        
+
         ImGui::End();
     }
 

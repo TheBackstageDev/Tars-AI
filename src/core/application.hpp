@@ -44,7 +44,7 @@ namespace core
         const size_t batch_size = 500;
         float learningRate = 0.2;
 
-        NTARS::DenseNeuralNetwork numberNetwork{{784, 30, 30, 10}, "ExampleNet_V1"};
+        NTARS::DenseNeuralNetwork numberNetwork{{729, 30, 30, 10}, "ExampleNet_V1"};
         std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
         std::unique_ptr<window_t> window;

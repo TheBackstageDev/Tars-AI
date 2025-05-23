@@ -29,8 +29,8 @@ namespace NTARS
         inline std::vector<size_t> getStructure() const { return _structure; }
         inline std::vector<DenseLayer>& getLayers() { return _layers; }
 
-        inline std::vector<TMATH::Matrix_t<float>> getWeights() { return weights; }
-        inline std::vector<TMATH::Matrix_t<float>> getBiases() { return biases; }
+        inline std::vector<TMATH::Matrix_t<float>>& getWeights() { return weights; }
+        inline std::vector<TMATH::Matrix_t<float>>& getBiases() { return biases; }
 
         void drawNetwork(bool partial);
     private:
