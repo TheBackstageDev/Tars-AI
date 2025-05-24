@@ -7,7 +7,6 @@
 #include <string>
 #include "ntars/models/DenseNetwork.hpp"
 #include "ntars/base/data.hpp"
-#include <thread>
 
 #include <random>
 #include <chrono>
@@ -240,7 +239,8 @@ namespace core
             ImGui::Begin("Controllers", nullptr, ImGuiWindowFlags_NoMove);
                 if (ImGui::Button("Run Network", ImVec2(150, 50)))
                 {
-                    numberNetwork.run(std::vector<float>(image.begin(), image.end()));
+                    std::vector<float> activations = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
+                    AIGuess = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Choose Random Data", ImVec2(150, 50)))
@@ -283,6 +283,8 @@ namespace core
         for (int32_t i = 0; i < structure.size(); ++i)
         {
             size_t neurons = structure[i];
+            //const std::vector<float> layerWeights = weights[i - 1].getElementsRaw();
+            const std::vector<float> layerActivations = i > 0 ? numberNetwork.getLayers()[i - 1].getActivations() : std::vector<float>{};
 
             float layerX = center.x - windowSize.x + (i + 1) * layerSpacing;
             float layerY = center.y;
@@ -313,19 +315,27 @@ namespace core
                     - ((neurons > displayAmmount) ? maxNeurons : neurons) / 2.0f) * neuronSpacing;
 
                 ImVec2 neuronPosition(layerX, neuronY);
-                drawlist->AddCircleFilled(neuronPosition, 5.f, IM_COL32(255, 255, 255, 255));
+                uint8_t brightness = layerActivations.size() > 0 ? std::max<uint8_t>(20, 255 * layerActivations[std::min<size_t>(0, n - 1)]) : 255;
 
                 if (i < structure.size() - 1)
                 {
                     float nextLayerX = center.x - windowSize.x + (i + 2) * layerSpacing;
                     size_t nextNeurons = structure[i + 1];
+
+                    const std::vector<float>& currentLineWeights = weights[i].getElementsRaw();
                     for (int32_t j = 0; j < nextNeurons; ++j)
                     {
                         float nextNeuronY = layerY + (j - (nextNeurons > 30 ? maxNeurons : nextNeurons) / 2.0f) * neuronSpacing;
                         ImVec2 nextNeuronPos(nextLayerX, nextNeuronY);
-                        drawlist->AddLine(neuronPosition, nextNeuronPos, IM_COL32(255, 255, 255, 120), 0.5f);
+
+                        const float& currentWeight = currentLineWeights[j];
+                        ImU32 currentLineColor = currentLineWeights[j] > 0 ? IM_COL32(0, 255, 0, currentWeight * brightness) : IM_COL32(255, 0, 0, currentWeight * brightness);
+                        
+                        drawlist->AddLine(neuronPosition, nextNeuronPos, currentLineColor, 0.5f);
                     }
                 }
+
+                drawlist->AddCircleFilled(neuronPosition, 7.f, IM_COL32_WHITE);
             }
         }
 

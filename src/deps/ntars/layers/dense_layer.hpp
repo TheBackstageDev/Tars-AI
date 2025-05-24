@@ -17,6 +17,7 @@ namespace NTARS
             _activations.resize(numNeurons);
             for (size_t i = 0; i < numNeurons; ++i)
             {
+                _activations[i] = 1.0f;
                 _neurons.emplace_back();
             }
         }

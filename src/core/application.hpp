@@ -3,6 +3,7 @@
 
 #include "window.hpp"
 #include <memory>
+#include <thread>
 
 #include "mnist/mnist_reader.hpp"
 #include "ntars/models/DenseNetwork.hpp"
@@ -45,9 +46,11 @@ namespace core
         const size_t batch_size = 500;
         float learningRate = 0.2;
 
-        NTARS::DenseNeuralNetwork numberNetwork{{729, 30, 30, 10}, "ExampleNet_V1"};
+        NTARS::DenseNeuralNetwork numberNetwork{{784, 30, 30, 10}, "ExampleNet_V1"};
         mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset;
         std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
+
+        std::thread* networkThread;
 
         std::unique_ptr<window_t> window;
     };
