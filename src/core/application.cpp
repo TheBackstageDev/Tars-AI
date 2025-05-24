@@ -5,46 +5,16 @@
 
 #include <iostream>
 #include <string>
-#include <array>
 #include "ntars/models/DenseNetwork.hpp"
 #include "ntars/base/data.hpp"
-#include "mnist/mnist_reader.hpp"
+#include <thread>
 
+#include <random>
 #include <chrono>
 #include "../config.h"
 
-/* void NeuralNetworkTrain()
-{
-    //NTARS::DenseNeuralNetwork network{{784, 256, 128, 10}, "TARS"};
-    NTARS::DenseNeuralNetwork network{"TARS.json"};
-    mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset =
-        mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
 
-    std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
-
-    const size_t batch_size = 500;
-    float learningRate = 0.2;
-
-    const auto& data = dataset.training_images;
-    for (size_t i = 0; i < data.size() / batch_size; ++i)
-    {
-        std::vector<NTARS::DATA::TrainingData<std::vector<float>>> miniBatch{};
-        for (size_t j = 0; j < batch_size && (i + j) < data.size(); ++j)
-        {
-            NTARS::DATA::TrainingData<std::vector<float>> newData{};
-            newData.data = std::vector<float>(data.at(i + j).begin(), data.at(i + j).end());
-
-            std::vector<float> expected(10, 0.0);
-            const int expectedLabel = static_cast<int>(dataset.training_labels.at(i + j));
-            expected.at(expectedLabel) = 1.0;
-            newData.label = expected;
-    
-            miniBatch.emplace_back(std::move(newData));
-        }
-        batches.emplace_back(std::move(miniBatch));
-    }
-
-    float learning_rate_threshold = 0.9;
+    /* float learning_rate_threshold = 0.9;
     float result = 0.0;
     for (auto& minibatch : batches)
     {
@@ -60,10 +30,13 @@
 
         std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
         std::cout << "it took " << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds to complete this training session" << std::endl;
-    }
+    } */
 
-    network.save();
-} */
+GLuint currentImage;
+std::vector<uint8_t> image;
+uint32_t actualLabel;
+
+int32_t AIGuess = -1;
 
 void trainCheckersNetwork()
 {
@@ -110,15 +83,39 @@ void trainCheckersNetwork()
     }
 }
 
+    std::tuple<GLuint, std::vector<uint8_t>, uint32_t> getRandomImage(mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t>& dataset)
+    {
+        static GLuint texture;
+
+        if (texture)
+            glDeleteTextures(1, &texture);
+
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_int_distribution<uint32_t> dist(0, 60000); 
+        uint32_t guess = dist(gen);
+
+        std::vector<uint8_t>& image = dataset.training_images.at(guess);
+
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 28, 28, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, image.data());
+
+        return {texture, image, guess};
+    }
+
 namespace core
 {
     application::application(const std::string& title, uint32_t width, uint32_t height)
     {
         //NeuralNetworkTrain();
         //trainCheckersNetwork();
+        dataset = mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
 
-        mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset =
-        mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
         const auto& data = dataset.training_images;
         for (size_t i = 0; i < data.size() / batch_size; ++i)
         {
@@ -139,6 +136,12 @@ namespace core
         }
 
         window = std::make_unique<window_t>(title, width, height);
+
+        auto imageTuple = getRandomImage(dataset);
+        currentImage = std::get<0>(imageTuple);
+        image = std::get<1>(imageTuple);
+        actualLabel = std::get<2>(imageTuple);
+        
         imguiSetup();
     }
 
@@ -148,6 +151,8 @@ namespace core
         ImGui_ImplGlfw_Shutdown();
 
         ImGui::DestroyContext();
+
+        glDeleteTextures(1, &currentImage);
     }
 
     void application::imguiSetup()
@@ -155,6 +160,8 @@ namespace core
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io; 
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(window->window(), true);
         ImGui_ImplOpenGL3_Init("#version 450");
@@ -207,7 +214,8 @@ namespace core
 
     void application::runPresentation()
     {
-        ImGui::SetNextWindowSize(ImGui::GetWindowSize(), ImGuiCond_Always);
+        auto size = ImGui::GetWindowViewport()->Size;
+        ImGui::SetNextWindowSize(size, ImGuiCond_Always);
         ImGui::Begin("Container", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
         ImGui::End();
@@ -215,21 +223,32 @@ namespace core
 
     void application::runAITraining()
     {
-        ImGui::SetNextWindowSize(ImGui::GetWindowSize(), ImGuiCond_Always);
-        ImGui::Begin("Container", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+        auto size = ImGui::GetWindowViewport()->Size;
+        ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+        ImGui::Begin("Container", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_DockNodeHost);
+
+            ImGui::SetNextWindowSize(ImVec2(500, 500));
+            ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoBringToFrontOnFocus);
+                ImGui::Image(currentImage, ImVec2(500, 500));
+                ImGui::Text("Current Number Displayed %i", dataset.training_labels.at(actualLabel));
+                ImGui::Text("Current AI Guess: %i", AIGuess);
+            ImGui::End();
 
             drawNetwork();
 
             // Where it'll control what'll happen in the AI Network Demonstration
-            ImGui::Begin("Controllers", nullptr);
+            ImGui::Begin("Controllers", nullptr, ImGuiWindowFlags_NoMove);
                 if (ImGui::Button("Run Network", ImVec2(150, 50)))
                 {
-                    
+                    numberNetwork.run(std::vector<float>(image.begin(), image.end()));
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Choose Random Data", ImVec2(150, 50)))
                 {
-
+                    auto imageTuple = getRandomImage(dataset);
+                    currentImage = std::get<0>(imageTuple);
+                    image = std::get<1>(imageTuple);
+                    actualLabel = std::get<2>(imageTuple);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Start Training", ImVec2(150, 50)))
@@ -244,7 +263,7 @@ namespace core
 
     void application::drawNetwork()
     {
-        ImGui::Begin("Neural Network Display", nullptr, ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin("Neural Network Display", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
      
         ImDrawList* drawlist = ImGui::GetWindowDrawList();
         std::vector<size_t> structure = numberNetwork.getStructure();
@@ -255,7 +274,7 @@ namespace core
         ImVec2 center(windowPos.x + windowSize.x, windowPos.y + windowSize.y * 0.5);
 
         float layerSpacing = windowSize.x / (structure.size() + 1);
-        float maxNeurons = *std::max_element(structure.begin(), structure.end());
+        size_t maxNeurons = *std::max_element(structure.begin(), structure.end());
 
         maxNeurons = maxNeurons > displayAmmount + 10 ? displayAmmount + 10 : maxNeurons;
 
@@ -270,10 +289,10 @@ namespace core
 
             for (size_t n = 0; n < neurons; ++n)
             {
-                if (i == 0 && neurons > displayAmmount && (n >= displayAmmount / 2 && n < neurons - displayAmmount / 2))
+                if (i == 0 && neurons > displayAmmount && (n >= displayAmmount / 2 && n < neurons - (displayAmmount / 2) + 1))
                 {
                     if (n > displayAmmount && n < neurons - displayAmmount)
-                        continue;
+                        n = neurons - displayAmmount;
 
                     float dotsY = layerY + (n - (neurons > 30 ? maxNeurons : neurons) / 2.0f) * neuronSpacing;
                     float dotSpacing = 8.f; 
@@ -288,7 +307,10 @@ namespace core
                     continue;
                 }
 
-                float neuronY = layerY + (n - (neurons > 30 ? maxNeurons : neurons) / 2.0f) * neuronSpacing;
+                float Nindex = n > displayAmmount && i == 0 ? (((displayAmmount + displayAmmount / 2)) - (neurons - n)) : n;
+
+                float neuronY = layerY + ((Nindex >= maxNeurons ? maxNeurons - (Nindex - maxNeurons) : Nindex) 
+                    - ((neurons > displayAmmount) ? maxNeurons : neurons) / 2.0f) * neuronSpacing;
 
                 ImVec2 neuronPosition(layerX, neuronY);
                 drawlist->AddCircleFilled(neuronPosition, 5.f, IM_COL32(255, 255, 255, 255));
