@@ -261,13 +261,24 @@ namespace core
 
     const size_t displayAmmount = 20;
 
+    size_t getRandomNeuron(size_t neurons)
+    {
+        static std::random_device rd;
+        static std::mt19937 gen(rd());  
+        std::uniform_int_distribution<size_t> neuronSelector(0, neurons - 1);
+
+        return neuronSelector(gen);
+    }
+
     void application::drawNetwork()
     {
         ImGui::Begin("Neural Network Display", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
      
         ImDrawList* drawlist = ImGui::GetWindowDrawList();
         std::vector<size_t> structure = numberNetwork.getStructure();
+
         auto& weights = numberNetwork.getWeights();
+        auto& biases = numberNetwork.getBiases();
 
         ImVec2 windowSize = ImGui::GetWindowSize();
         ImVec2 windowPos = ImGui::GetWindowPos();
@@ -323,13 +334,15 @@ namespace core
                     size_t nextNeurons = structure[i + 1];
 
                     const std::vector<float>& currentLineWeights = weights[i].getElementsRaw();
+                    const std::vector<float>& currentLineBiases = biases[i].getElementsRaw();
                     for (int32_t j = 0; j < nextNeurons; ++j)
                     {
                         float nextNeuronY = layerY + (j - (nextNeurons > 30 ? maxNeurons : nextNeurons) / 2.0f) * neuronSpacing;
                         ImVec2 nextNeuronPos(nextLayerX, nextNeuronY);
 
+                        const float& currentBias = currentLineBiases[j];
                         const float& currentWeight = currentLineWeights[j];
-                        ImU32 currentLineColor = currentLineWeights[j] > 0 ? IM_COL32(0, 255, 0, currentWeight * brightness) : IM_COL32(255, 0, 0, currentWeight * brightness);
+                        ImU32 currentLineColor = currentLineWeights[j] > 0 ? IM_COL32(0, 255, 0, (currentWeight + currentBias) * brightness) : IM_COL32(255, 0, 0, (currentWeight + currentBias) * brightness);
                         
                         drawlist->AddLine(neuronPosition, nextNeuronPos, currentLineColor, 0.5f);
                     }
