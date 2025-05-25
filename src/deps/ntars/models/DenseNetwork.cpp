@@ -13,6 +13,7 @@ constexpr bool debug =
 #include <filesystem>
 #include <fstream>
 #include <random>
+#include <thread>
 
 #include "json/json.hpp"
 #include "deps/tarscuda/tensor_operations.hpp"
@@ -145,23 +146,14 @@ namespace NTARS
         }
     };
 
-    std::vector<float> DenseNeuralNetwork::run(const std::vector<float>& inputs)
+    std::vector<float> DenseNeuralNetwork::run(const std::vector<float>& inputs, bool slowRun)
     {
         std::vector<float> currentInputs = inputs;
         for (size_t l = 0; l < _layers.size(); ++l)
         {
             currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
-        }
-
-        return currentInputs;
-    }
-
-    std::vector<float> DenseNeuralNetwork::runInternal(const std::vector<float>& inputs)
-    {
-        std::vector<float> currentInputs = inputs;
-        for (size_t l = 0; l < _layers.size(); ++l)
-        {
-            currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
+            if (slowRun)
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
 
         return currentInputs;
@@ -214,7 +206,7 @@ namespace NTARS
 
     }
 
-    float DenseNeuralNetwork::trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate)
+    float DenseNeuralNetwork::trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate, bool slowTrain)
     {
         int32_t numCorrect{0};
         int32_t numWrong{0};
@@ -227,7 +219,7 @@ namespace NTARS
         
         for (auto& train_data : miniBatch)
         {
-            std::vector<float> outputs = runInternal(train_data.data);
+            std::vector<float> outputs = run(train_data.data);
             std::vector<float> expected = train_data.label;
 
             const int32_t expectedLabel = std::distance(expected.begin(), std::find(expected.begin(), expected.end(), 1));
@@ -268,10 +260,13 @@ namespace NTARS
         }
 
         float batchSize = static_cast<float>(miniBatch.size());
-        for (size_t l = 0; l < _layers.size(); ++l)
+        for (int64_t l = _layers.size() - 1; l >= 0; --l)
         {
             weights[l] += weightGradients[l] * (learningRate / batchSize);
             biases[l] += biasGradients[l] * (learningRate / batchSize);
+
+            if (slowTrain)
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
 
         return (float)numCorrect / (float)(numCorrect + numWrong);

@@ -43,14 +43,14 @@ namespace core
 
         //AI PRESENTATION PART//
 
-        const size_t batch_size = 500;
-        float learningRate = 0.2;
+        const size_t batch_size = 200;
+        float learningRate = 1.0;
 
-        NTARS::DenseNeuralNetwork numberNetwork{{784, 30, 30, 10}, "ExampleNet_V1"};
-        mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset;
+        NTARS::DenseNeuralNetwork numberNetwork{{784, 100, 50, 10}, "ExampleNet_V1"};
+        mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset{};
         std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
-        std::thread* networkThread;
+        std::thread* networkThread = nullptr;
 
         std::unique_ptr<window_t> window;
     };

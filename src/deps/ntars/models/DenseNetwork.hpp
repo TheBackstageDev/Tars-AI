@@ -20,8 +20,8 @@ namespace NTARS
 
         ~DenseNeuralNetwork();
 
-        std::vector<float> run(const std::vector<float>& inputs);
-        float trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
+        std::vector<float> run(const std::vector<float>& inputs, bool slowRun = false);
+        float trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1, bool slowTrain = false);
         void train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
 
         void save();
@@ -47,8 +47,6 @@ namespace NTARS
         {
             return meanSquaredError(results.data(), expected.data(), results.size());
         }
-
-        std::vector<float> runInternal(const std::vector<float>& inputs);
 
         std::vector<TMATH::Matrix_t<float>> weights;
         std::vector<TMATH::Matrix_t<float>> biases;

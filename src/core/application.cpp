@@ -37,6 +37,8 @@ uint32_t actualLabel;
 
 int32_t AIGuess = -1;
 
+bool finishedTraining = false;
+
 void trainCheckersNetwork()
 {
     //NTARS::DenseNeuralNetwork network{{64, 512, 256, 128, 64}, "CheckinTime"};
@@ -152,6 +154,16 @@ namespace core
         ImGui::DestroyContext();
 
         glDeleteTextures(1, &currentImage);
+
+        if (networkThread != nullptr)
+        {
+            if (networkThread->joinable())
+            {
+                networkThread->join();
+                delete networkThread;
+                networkThread = nullptr;
+            }
+        }
     }
 
     void application::imguiSetup()
@@ -220,8 +232,13 @@ namespace core
         ImGui::End();
     }
 
+    std::vector<float> activations;
+
     void application::runAITraining()
     {
+        /* if (nullptr != networkThread && networkThread->joinable())
+            networkThread->join(); */
+
         auto size = ImGui::GetWindowViewport()->Size;
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
         ImGui::Begin("Container", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_DockNodeHost);
@@ -231,6 +248,9 @@ namespace core
                 ImGui::Image(currentImage, ImVec2(500, 500));
                 ImGui::Text("Current Number Displayed %i", dataset.training_labels.at(actualLabel));
                 ImGui::Text("Current AI Guess: %i", AIGuess);
+
+                float confidence = AIGuess != -1 ? activations[AIGuess] * 100.0f : 0.f;
+                ImGui::ProgressBar(confidence / 100.0f, ImVec2(200, 20), "Confidence");
             ImGui::End();
 
             drawNetwork();
@@ -239,7 +259,7 @@ namespace core
             ImGui::Begin("Controllers", nullptr, ImGuiWindowFlags_NoMove);
                 if (ImGui::Button("Run Network", ImVec2(150, 50)))
                 {
-                    std::vector<float> activations = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
+                    activations = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
                     AIGuess = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
                 }
                 ImGui::SameLine();
@@ -253,13 +273,37 @@ namespace core
                 ImGui::SameLine();
                 if (ImGui::Button("Start Training", ImVec2(150, 50)))
                 {
+                    if (finishedTraining != false)
+                    {
+                        networkThread->join();
+                        
+                        delete networkThread;
+                        networkThread = nullptr;
+                        finishedTraining = false;
+                    }
 
+                    networkThread = new std::thread([&](){
+                        float result = 0.0;
+                        for (auto& minibatch : batches)
+                        {
+                            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+                            result = numberNetwork.trainCPU(minibatch, learningRate);
+                            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+
+                            std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
+                            std::cout << "it took " << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds to complete this training session" << std::endl;
+
+                            if (result > 0.95)
+                                break;
+                        }
+                        finishedTraining = true;
+                    });
                 }
             ImGui::End();
         ImGui::End();
     }
 
-    const size_t displayAmmount = 20;
+    const size_t displayAmmount = 70;
 
     size_t getRandomNeuron(size_t neurons)
     {
@@ -287,14 +331,13 @@ namespace core
         float layerSpacing = windowSize.x / (structure.size() + 1);
         size_t maxNeurons = *std::max_element(structure.begin(), structure.end());
 
-        maxNeurons = maxNeurons > displayAmmount + 10 ? displayAmmount + 10 : maxNeurons;
+        maxNeurons = maxNeurons > displayAmmount + 50 ? displayAmmount + 50 : maxNeurons;
 
         float neuronSpacing = (windowSize.y * 0.9) / (maxNeurons + 1);  
 
         for (int32_t i = 0; i < structure.size(); ++i)
         {
             size_t neurons = structure[i];
-            //const std::vector<float> layerWeights = weights[i - 1].getElementsRaw();
             const std::vector<float> layerActivations = i > 0 ? numberNetwork.getLayers()[i - 1].getActivations() : std::vector<float>{};
 
             float layerX = center.x - windowSize.x + (i + 1) * layerSpacing;
@@ -314,7 +357,7 @@ namespace core
                     for (int i = 0; i < 3; ++i)
                     {
                         ImVec2 dotPosition(dotStart.x + i * dotSpacing, dotStart.y);
-                        drawlist->AddCircleFilled(dotPosition, 2.f, IM_COL32(255, 255, 255, 255));
+                        drawlist->AddCircleFilled(dotPosition, 1.f, IM_COL32(255, 255, 255, 255));
                     }
 
                     continue;
@@ -337,18 +380,18 @@ namespace core
                     const std::vector<float>& currentLineBiases = biases[i].getElementsRaw();
                     for (int32_t j = 0; j < nextNeurons; ++j)
                     {
-                        float nextNeuronY = layerY + (j - (nextNeurons > 30 ? maxNeurons : nextNeurons) / 2.0f) * neuronSpacing;
+                        float nextNeuronY = layerY + (j - (nextNeurons > displayAmmount ? maxNeurons : nextNeurons) / 2.0f) * neuronSpacing;
                         ImVec2 nextNeuronPos(nextLayerX, nextNeuronY);
 
                         const float& currentBias = currentLineBiases[j];
                         const float& currentWeight = currentLineWeights[j];
-                        ImU32 currentLineColor = currentLineWeights[j] > 0 ? IM_COL32(0, 255, 0, (currentWeight + currentBias) * brightness) : IM_COL32(255, 0, 0, (currentWeight + currentBias) * brightness);
+                        ImU32 currentLineColor = currentLineWeights[j] > 0 ? IM_COL32(0, 255, 0, (currentWeight + currentBias) * brightness) : IM_COL32(200, 0, 0, (currentWeight + currentBias) * brightness);
                         
-                        drawlist->AddLine(neuronPosition, nextNeuronPos, currentLineColor, 0.5f);
+                        drawlist->AddLine(neuronPosition, nextNeuronPos, currentLineColor, 0.25f);
                     }
                 }
 
-                drawlist->AddCircleFilled(neuronPosition, 7.f, IM_COL32_WHITE);
+                drawlist->AddCircleFilled(neuronPosition, 3.f, IM_COL32_WHITE);
             }
         }
 
