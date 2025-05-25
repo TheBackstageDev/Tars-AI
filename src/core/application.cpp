@@ -245,12 +245,38 @@ namespace core
 
             ImGui::SetNextWindowSize(ImVec2(500, 500));
             ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoBringToFrontOnFocus);
-                ImGui::Image(currentImage, ImVec2(500, 500));
+                ImGui::SetWindowFontScale(1.2f); 
+
+                ImGui::Image(currentImage, ImVec2(450, 450));
                 ImGui::Text("Current Number Displayed %i", dataset.training_labels.at(actualLabel));
                 ImGui::Text("Current AI Guess: %i", AIGuess);
 
-                float confidence = AIGuess != -1 ? activations[AIGuess] * 100.0f : 0.f;
-                ImGui::ProgressBar(confidence / 100.0f, ImVec2(200, 20), "Confidence");
+                std::vector<std::pair<size_t, float>> sortedActivations;
+                for (size_t i = 0; i < activations.size(); ++i)
+                {
+                    sortedActivations.emplace_back(i, activations[i]);
+                }
+
+                std::sort(sortedActivations.begin(), sortedActivations.end(), 
+                        [](const std::pair<size_t, float>& a, const std::pair<size_t, float>& b) {
+                            return a.second > b.second; 
+                        });
+
+                ImGui::Separator();
+
+                float totalActivations = std::accumulate(activations.begin(), activations.end(), 0.0f);
+
+                ImGui::Separator();
+                ImGui::Text("AI Confidence Scores:");
+
+                for (const auto& [index, confidence] : sortedActivations)
+                {
+                    float normalizedConfidence = (totalActivations > 0.0f) ? (confidence / totalActivations) * 100.0f : 0.0f;
+                    
+                    ImGui::Text("Class %i: %.2f%%", index, normalizedConfidence);
+                    ImGui::ProgressBar(normalizedConfidence / 100.0f, ImVec2(200, 30));
+                }
+
             ImGui::End();
 
             drawNetwork();
@@ -293,7 +319,8 @@ namespace core
                             std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
                             std::cout << "it took " << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds to complete this training session" << std::endl;
 
-                            if (result > 0.95)
+                            activations = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
+                            if (result > 0.97)
                                 break;
                         }
                         finishedTraining = true;
@@ -313,6 +340,8 @@ namespace core
 
         return neuronSelector(gen);
     }
+
+    const float neuronSize = 3.f;
 
     void application::drawNetwork()
     {
@@ -341,7 +370,7 @@ namespace core
             const std::vector<float> layerActivations = i > 0 ? numberNetwork.getLayers()[i - 1].getActivations() : std::vector<float>{};
 
             float layerX = center.x - windowSize.x + (i + 1) * layerSpacing;
-            float layerY = center.y;
+            float layerY = center.y + 20;
 
             for (size_t n = 0; n < neurons; ++n)
             {
@@ -391,8 +420,26 @@ namespace core
                     }
                 }
 
-                drawlist->AddCircleFilled(neuronPosition, 3.f, IM_COL32_WHITE);
+                drawlist->AddCircleFilled(neuronPosition, neuronSize, IM_COL32_WHITE);
             }
+
+            std::string layerLabel;
+
+            if (i == 0)
+            {
+                layerLabel = "Input Layer (" + std::to_string(neurons) + ")";
+            }
+            else if (i < structure.size() - 1)
+            {
+                layerLabel = "Hidden Layer " + std::to_string(i) + " (" + std::to_string(neurons) + ")";
+            }
+            else
+            {
+                layerLabel = "Output Layer (" + std::to_string(neurons) + ")";
+            }
+
+            ImGui::SetWindowFontScale(1.3f); 
+            drawlist->AddText(ImVec2(layerX - 100, layerY - 20 + (displayAmmount + 50) * neuronSize), IM_COL32_WHITE, layerLabel.c_str());
         }
 
         ImGui::End();
