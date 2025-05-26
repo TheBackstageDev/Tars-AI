@@ -30,7 +30,7 @@ namespace NETWORK
         return minimax(board_state, trainingData).second;
     }
 
-    std::pair<uint32_t, Move> CheckersMinMax::minimax(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max, uint32_t currentDepth, int32_t alpha, int32_t beta)
+    std::pair<int32_t, Move> CheckersMinMax::minimax(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max, uint32_t currentDepth, int32_t alpha, int32_t beta)
     {
         if (currentDepth == depth - 1)
             return {evaluatePosition(board_state, max), Move()};
@@ -38,7 +38,7 @@ namespace NETWORK
         if (currentDepth == 0)
             checkedMoves = 0;
 
-        uint32_t bestValue = max ? -std::numeric_limits<uint32_t>::max() : std::numeric_limits<uint32_t>::max();
+        int32_t bestValue = max ? -std::numeric_limits<int32_t>::max() : std::numeric_limits<int32_t>::max();
         std::vector<Move> moves = board.getMoves(max, board_state);
 
         if (moves.size() == 0)
@@ -94,9 +94,10 @@ namespace NETWORK
     const uint32_t moveCountMultiplier = 3;
     const uint32_t positionMultiplier = 2;
     const uint32_t queenValue = 7;
+    const uint32_t pieceValue = 1;
     const uint32_t endGameCount = 10;
 
-    uint32_t CheckersMinMax::valueMove(std::vector<float>& board_state, const Move& move)
+    int32_t CheckersMinMax::valueMove(std::vector<float>& board_state, const Move& move)
     {
         uint32_t score{0};
 
@@ -122,16 +123,16 @@ namespace NETWORK
         });
     }
 
-    uint32_t CheckersMinMax::evaluatePosition(std::vector<float>& board_state, bool max)
+    int32_t CheckersMinMax::evaluatePosition(std::vector<float>& board_state, bool max)
     {
         std::vector<Move> maxMoves = board.getMoves(true, board_state);
         std::vector<Move> minMoves = board.getMoves(false, board_state);
-    
-        uint32_t score = (maxMoves.size() - minMoves.size()) * moveCountMultiplier;
 
-        uint32_t maxPieceCount = 0, minPieceCount = 0;
-        uint32_t maxQueenCount = 0, minQueenCount = 0;
-        uint32_t maxCapturedPieces = 0, minCapturedPieces = 0;
+        int32_t score = (static_cast<int32_t>(maxMoves.size()) - static_cast<int32_t>(minMoves.size())) * moveCountMultiplier;
+
+        int32_t maxPieceCount = 0, minPieceCount = 0;
+        int32_t maxQueenCount = 0, minQueenCount = 0;
+        int32_t maxCapturedPieces = 0, minCapturedPieces = 0;
 
         for (int32_t x = 0; x < board.getSize() * board.getSize(); ++x)
         {
@@ -140,51 +141,58 @@ namespace NETWORK
             if (currentCell == 0) continue;
 
             bool isMaxPiece = currentCell > 0;
-            bool isCurrentQueen = abs(currentCell) == 1;
+            bool isCurrentQueen = std::abs(currentCell) == 1;
 
-            isMaxPiece ? maxPieceCount++ : minPieceCount++;
-
-            if (isCurrentQueen)
+            if (isMaxPiece) 
             {
-                isMaxPiece ? maxQueenCount++ : minQueenCount++;
-                isMaxPiece ? score += queenValue : score -= queenValue;
+                maxPieceCount++;
+                if (isCurrentQueen) maxQueenCount++;
+                score += isCurrentQueen ? queenValue * 3 : pieceValue;
+            }
+            else 
+            {
+                minPieceCount++;
+                if (isCurrentQueen) minQueenCount++;
+                score -= isCurrentQueen ? queenValue * 3 : pieceValue;
             }
 
-            int32_t centerDistance = std::abs(static_cast<int32_t>((board.getSize() / 2) - board.getX(x))) + std::abs(static_cast<int32_t>((board.getSize() / 2) - board.getY(x)));
-            int32_t positionWeight = 1 / (1 + centerDistance); 
+            int32_t centerDistance = std::abs(static_cast<int32_t>(board.getSize() / 2) - static_cast<int32_t>(board.getX(x))) + std::abs(static_cast<int32_t>(board.getSize() / 2) - static_cast<int32_t>(board.getY(x)));
+            float positionWeight = 1.0f / (1.0f + centerDistance); 
+            int32_t forwardBonus = isMaxPiece ? board.getY(x) : (board.getSize() - board.getY(x));
 
             score += (isMaxPiece ? positionWeight : -positionWeight) * positionMultiplier;
         }
 
-        bool isEndGame = maxPieceCount + minPieceCount <= endGameCount;
-
         for (const Move& move : maxMoves)
         {
-            maxCapturedPieces += move.middlePositions.size() * captureMultiplier;
+            maxCapturedPieces += move.middlePositions.size();
             if (move.middlePositions.size() > 1) 
-                score += multiCaptureBonus * maxCapturedPieces; 
+                score += multiCaptureBonus * move.middlePositions.size(); 
         }
 
         for (const Move& move : minMoves)
         {
-            minCapturedPieces += move.middlePositions.size() * captureMultiplier;
+            minCapturedPieces += move.middlePositions.size();
             if (move.middlePositions.size() > 1) 
-                score -= multiCaptureBonus * 5.f * minCapturedPieces; 
+                score -= multiCaptureBonus * move.middlePositions.size() * 2;
         }
 
-        if (isEndGame)
+        score += (maxCapturedPieces - minCapturedPieces) * captureMultiplier;
+
+        int32_t remainingPieces = maxPieceCount + minPieceCount;
+        if (remainingPieces <= endGameCount)
         {
             if (maxMoves.size() < 5)
             {
-                score += max ? -queenValue * 2 : queenValue * 2; 
+                score += max ? queenValue * 2 : -queenValue * 2;
             }
             else
             {
-                score += max ? 2 : -2;
+                score += max ? pieceValue * 2 : -pieceValue * 2;
             }
         }
-        
-        return score;
+
+        return max ? score : -score; 
     }
 
 } // namespace NETWORK

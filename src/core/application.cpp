@@ -193,10 +193,10 @@ namespace core
 
     void application::runCheckers(Checkers& checkers, Board& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
-        if (board.getCurrentTurn() == false)
+        if (board.getCurrentTurn())
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-            auto move = algorithm.getBestMove(board.board(), trainingData, false);
+            auto move = algorithm.getBestMove(board.board(), trainingData, true);
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
             board.makeMove(move, board.board());
@@ -251,7 +251,7 @@ namespace core
                 ImGui::Text("Current Number Displayed %i", dataset.training_labels.at(actualLabel));
                 ImGui::Text("Current AI Guess: %i", AIGuess);
 
-                std::vector<std::pair<size_t, float>> sortedActivations;
+                std::vector<std::pair<size_t, float>> sortedActivations{};
                 for (size_t i = 0; i < activations.size(); ++i)
                 {
                     sortedActivations.emplace_back(i, activations[i]);
@@ -299,7 +299,7 @@ namespace core
                 ImGui::SameLine();
                 if (ImGui::Button("Start Training", ImVec2(150, 50)))
                 {
-                    if (finishedTraining != false)
+                    if (finishedTraining)
                     {
                         networkThread->join();
                         
@@ -325,6 +325,10 @@ namespace core
                         }
                         finishedTraining = true;
                     });
+                }
+                if (ImGui::Button("Exit To Menu", ImVec2(150, 50)))
+                {
+                    part = CurrentPart::MENU;
                 }
             ImGui::End();
         ImGui::End();
@@ -493,9 +497,9 @@ namespace core
         const uint32_t board_size = 8;
 
         Board board{board_size};
-        Checkers checkers(board, 70.f);
+        Checkers checkers(board, 100.f);
 
-        NETWORK::CheckersMinMax algorithm(8, board);
+        NETWORK::CheckersMinMax algorithm(5, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
