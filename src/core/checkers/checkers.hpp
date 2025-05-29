@@ -13,7 +13,7 @@ public:
     Checkers(Board& board, const float tile_size);
 
     void drawBoard();
-    void drawInfo();
+    void drawInfo(int32_t boardScore);
 
     void handleNetworkAction(std::vector<float>& activations);
     void handleAction(int32_t pieceIndex, int32_t moveIndex);

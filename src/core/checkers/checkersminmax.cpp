@@ -54,7 +54,19 @@ namespace NETWORK
 
             checkedMoves++;
 
-            int32_t value = minimax(tempBoard, trainingData, !max, currentDepth + 1, alpha, beta).first;
+            int32_t value = 0;
+
+            auto [iter, inserted] = permutations.try_emplace(tempBoard, 0);
+
+            if (!inserted)
+            {
+                value = iter->second;
+            }
+            else
+            {
+                value = minimax(tempBoard, trainingData, !max, currentDepth + 1, alpha, beta).first;
+                iter->second = value; 
+            }
 
             if ((max && value > bestValue) || (!max && value < bestValue))
             {
@@ -70,6 +82,8 @@ namespace NETWORK
             if (alpha >= beta)
                 break;
         }
+
+        boardScore = bestValue;
 
         if (chosenMove.endPos != 0 || chosenMove.startPos != 0) {
             NTARS::DATA::TrainingData<std::vector<float>> moveData;
@@ -99,19 +113,29 @@ namespace NETWORK
 
     int32_t CheckersMinMax::valueMove(std::vector<float>& board_state, const Move& move)
     {
-        uint32_t score{0};
+        int32_t score{0};
 
         score += move.middlePositions.size() * captureMultiplier;
         if (move.middlePositions.size() > 1) 
             score += multiCaptureBonus * move.middlePositions.size(); 
 
-        if ((board_state[move.endPos] == -0.5 && board.getY(move.endPos) == 0)) // PLR Reaches Top Row
+        if (board.getY(move.endPos) == board.getSize() - 1) 
+            score += queenValue; 
+
+        int32_t centerDistance = std::abs(static_cast<int32_t>((board.getSize() / 2) - board.getX(move.endPos))) + std::abs(static_cast<int32_t>((board.getSize() / 2) - board.getY(move.endPos)));
+        float positionWeight = 1.0f / (1.0f + centerDistance);
+        score += positionWeight * positionMultiplier;
+
+        std::vector<Move> opponentMoves = board.getMoves(false, board_state);
+        for (const Move& oppMove : opponentMoves)
         {
-            score += queenValue;
-        } // Move forms a queen, probably good.
-        
+            if (oppMove.endPos == move.endPos) 
+                score -= captureMultiplier; 
+        }
+
         return score;    
     }
+
 
     void CheckersMinMax::sortMoves(std::vector<float>& board_state, std::vector<Move>& moves)
     {
@@ -174,7 +198,7 @@ namespace NETWORK
         {
             minCapturedPieces += move.middlePositions.size();
             if (move.middlePositions.size() > 1) 
-                score -= multiCaptureBonus * move.middlePositions.size() * 2;
+                score -= multiCaptureBonus * move.middlePositions.size() * 3;
         }
 
         score += (maxCapturedPieces - minCapturedPieces) * captureMultiplier;

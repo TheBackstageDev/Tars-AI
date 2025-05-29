@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <algorithm>
+
 // Player Colors
 #define PLR1_COLOR IM_COL32(225, 0, 0, 255)     // Red (Player 1)
 #define PLR2_COLOR IM_COL32(225, 208, 150, 255) // Beige/Sepia (Player 2)
@@ -173,8 +175,25 @@ void Checkers::drawBoard()
     drawGameOverScreen();
 }
 
-void Checkers::drawInfo()
+void Checkers::drawInfo(int32_t boardScore)
 {
+    ImVec2 window_pos = ImGui::GetWindowPos();
+    ImVec2 board_start = ImVec2(window_pos.x + margin, window_pos.y + margin);
+    ImVec2 info_start = ImVec2(board_start.x + tile_size * (board.getSize() + 1), window_pos.y);
+
+    float progress = std::clamp((boardScore / 100.0f), -1.0f, 1.0f); 
+
+    ImGui::Begin("Info");
+
+    ImVec2 barSize(20, board.getSize() * tile_size); 
+    ImVec2 barPos(info_start.x, info_start.y); 
+
+    ImDrawList* drawlist = ImGui::GetWindowDrawList();
+
+    drawlist->AddRectFilled(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), IM_COL32(50, 50, 50, 255));
+    drawlist->AddRectFilled(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y * (progress)), PLR1_COLOR);
+
+    ImGui::End();
 }
 
 void Checkers::drawCrown(ImDrawList *drawlist, ImVec2 center)

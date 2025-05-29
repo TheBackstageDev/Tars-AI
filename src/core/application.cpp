@@ -210,6 +210,7 @@ namespace core
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
         checkers.drawBoard();
+        checkers.drawInfo(algorithm.getCurrentBoardScore());
 
         ImGui::Begin("Extra Info", nullptr, ImGuiWindowFlags_NoCollapse);
 
@@ -236,9 +237,6 @@ namespace core
 
     void application::runAITraining()
     {
-        /* if (nullptr != networkThread && networkThread->joinable())
-            networkThread->join(); */
-
         auto size = ImGui::GetWindowViewport()->Size;
         ImGui::SetNextWindowSize(size, ImGuiCond_Always);
         ImGui::Begin("Container", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_DockNodeHost);
@@ -354,8 +352,8 @@ namespace core
         ImDrawList* drawlist = ImGui::GetWindowDrawList();
         std::vector<size_t> structure = numberNetwork.getStructure();
 
-        auto& weights = numberNetwork.getWeights();
-        auto& biases = numberNetwork.getBiases();
+        const auto& weights = numberNetwork.getWeights();
+        const auto& biases = numberNetwork.getBiases();
 
         ImVec2 windowSize = ImGui::GetWindowSize();
         ImVec2 windowPos = ImGui::GetWindowPos();
@@ -499,7 +497,7 @@ namespace core
         Board board{board_size};
         Checkers checkers(board, 100.f);
 
-        NETWORK::CheckersMinMax algorithm(5, board);
+        NETWORK::CheckersMinMax algorithm(6, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
@@ -534,7 +532,11 @@ namespace core
             glfwSwapBuffers(window->window());
             glfwPollEvents();
         }
+
+        NTARS::DATA::saveListDataJSON(trainingData, "CheckersData");
     }
+
+    
 } // namespace core
 
 

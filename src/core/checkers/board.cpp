@@ -223,6 +223,7 @@ void Board::checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Mov
                     moves.push_back(captureOne);
 
                     checkCaptures(capturePos, max, moves, board_state);
+                    checkCaptures(capturePos, max, moves, board_state, pieceIndex, captureOne.middlePositions);
                 }
 
                 foundPiece = true;
