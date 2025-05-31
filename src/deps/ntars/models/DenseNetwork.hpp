@@ -11,11 +11,18 @@
 
 namespace NTARS
 {
+    enum NeuralNetworkFlags_
+    {
+        NeuralNetworkFlags_None = 0,
+        NeuralNetworkFlags_SlowTrain = 1 << 0,
+        NeuralNetworkFlags_Floor = 1 << 1
+    };
+
     // Neural Network which uses dense layers
     class DenseNeuralNetwork 
     {
     public:
-        DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name);
+        DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name, NeuralNetworkFlags_ flags = NeuralNetworkFlags_None);
         DenseNeuralNetwork(const std::string& file);
 
         ~DenseNeuralNetwork();
@@ -55,6 +62,8 @@ namespace NTARS
 
         std::vector<DenseLayer> _layers;
         std::vector<size_t> _structure;
+
+        NeuralNetworkFlags_ flags;
 
         // Training Buffers
         std::vector<TMATH::Matrix_t<float>> deltas;

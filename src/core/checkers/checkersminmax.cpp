@@ -27,12 +27,20 @@ namespace NETWORK
 
     Move CheckersMinMax::getBestMove(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max)
     {
-        return minimax(board_state, trainingData).second;
+        for (int32_t currentSearch = 1; currentSearch < depth; ++currentSearch)
+            minimax(board_state, trainingData, max, 0, currentSearch);
+
+        std::cout << "Count of Permutations: " << permutations.size() << std::endl;
+
+        return minimax(board_state, trainingData, max, 0, depth).second;
     }
 
-    std::pair<int32_t, Move> CheckersMinMax::minimax(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max, uint32_t currentDepth, int32_t alpha, int32_t beta)
+    std::pair<int32_t, Move> CheckersMinMax::minimax(
+        std::vector<float>& board_state, 
+        std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, 
+        bool max, uint32_t currentDepth, uint32_t maxDepth, int32_t alpha, int32_t beta)
     {
-        if (currentDepth == depth - 1)
+        if (currentDepth == maxDepth)
             return {evaluatePosition(board_state, max), Move()};
 
         if (currentDepth == 0)
@@ -47,6 +55,8 @@ namespace NETWORK
         Move chosenMove{};
         sortMoves(board_state, moves);
 
+        bool _inserted{true};
+
         for (Move move : moves)
         {
             std::vector<float> tempBoard = board_state; 
@@ -54,19 +64,17 @@ namespace NETWORK
 
             checkedMoves++;
 
-            int32_t value = 0;
+            auto [iter, inserted] = permutations.try_emplace(tempBoard, evaluatePosition(tempBoard, max));
 
-            auto [iter, inserted] = permutations.try_emplace(tempBoard, 0);
+            int32_t value = iter->second;
 
-            if (!inserted)
+            if (inserted)
             {
-                value = iter->second;
-            }
-            else
-            {
-                value = minimax(tempBoard, trainingData, !max, currentDepth + 1, alpha, beta).first;
+                value = minimax(tempBoard, trainingData, !max, currentDepth + 1, maxDepth, alpha, beta).first;
                 iter->second = value; 
             }
+            else
+                _inserted = false;
 
             if ((max && value > bestValue) || (!max && value < bestValue))
             {
@@ -85,7 +93,7 @@ namespace NETWORK
 
         boardScore = bestValue;
 
-        if (chosenMove.endPos != 0 || chosenMove.startPos != 0) {
+        if ((chosenMove.endPos != 0 || chosenMove.startPos != 0) && _inserted == true) {
             NTARS::DATA::TrainingData<std::vector<float>> moveData;
             moveData.data = board_state;
             moveData.label = getTrainingLabel(chosenMove.endPos);

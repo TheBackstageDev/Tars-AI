@@ -5,7 +5,7 @@
 
 #include "board.hpp"
 #include <imgui/imgui/backends/imgui_impl_opengl3.h>
-
+#include "checkersminmax.hpp"
 
 class Checkers 
 {
@@ -15,7 +15,7 @@ public:
     void drawBoard();
     void drawInfo(int32_t boardScore);
 
-    void handleNetworkAction(std::vector<float>& activations);
+    void handleNetworkAction(std::vector<float>& activations, NETWORK::CheckersMinMax& algorithm);
     void handleAction(int32_t pieceIndex, int32_t moveIndex);
 
     inline const int32_t getCellMouseAt(const ImVec2 boardStart) const

@@ -20,8 +20,8 @@ constexpr bool debug =
 
 namespace NTARS
 {
-    DenseNeuralNetwork::DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name)
-     : _structure(structure), name(name)
+    DenseNeuralNetwork::DenseNeuralNetwork(const std::vector<size_t>& structure, const std::string& name, NeuralNetworkFlags_ flags)
+     : _structure(structure), name(name), flags(flags)
     {
         initializeWeightsAndBiases(structure);
         createLayers(structure);
@@ -51,6 +51,7 @@ namespace NTARS
 
                 name.clear();
                 name = loaded["name"].get<std::string>();
+                flags = loaded["flags"].get<NeuralNetworkFlags_>();
             
                 biases.clear();
                 for (const auto& biasMatrix : loaded["biases"])
@@ -165,6 +166,7 @@ namespace NTARS
         
         saved["structure"] = _structure;
         saved["name"] = name;
+        saved["flags"] = flags;
         
         for (const auto& weightMatrix : weights)
         {

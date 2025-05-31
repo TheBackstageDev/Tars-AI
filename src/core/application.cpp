@@ -41,11 +41,11 @@ bool finishedTraining = false;
 
 void trainCheckersNetwork()
 {
-    //NTARS::DenseNeuralNetwork network{{64, 512, 256, 128, 64}, "CheckinTime"};
-    NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
+    NTARS::DenseNeuralNetwork network{{64, 512, 256, 121, 64}, "CheckinTime"};
+    //NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
 
-    const size_t batch_size = 500;
-    float learningRate = 0.5;
+    const size_t batch_size = 300;
+    float learningRate = 1.0;
 
     std::vector<NTARS::DATA::TrainingData<std::vector<float>>> rawData = NTARS::DATA::loadDataListJSON<std::vector<float>>("CheckersData");
     std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
@@ -62,12 +62,12 @@ void trainCheckersNetwork()
     float learning_rate_threshold = 0.9;
     float result = 0.0;
 
-    for (int32_t epoch = 1; epoch <= 2; ++epoch)
+    for (int32_t epoch = 0; epoch < 2; ++epoch)
     {
         for (auto& minibatch : batches)
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-            result = network.trainCPU(minibatch, learningRate);
+            result = network.trainCPU(minibatch, learningRate, false);
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     
             if (result >= learning_rate_threshold)
@@ -193,7 +193,7 @@ namespace core
 
     void application::runCheckers(Checkers& checkers, Board& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
-        if (board.getCurrentTurn())
+        /* if (board.getCurrentTurn())
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
             auto move = algorithm.getBestMove(board.board(), trainingData, true);
@@ -205,7 +205,18 @@ namespace core
 
             std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
             std::cout << "It checked " << std::to_string(algorithm.getCheckedMoveCount()) << " moves \n";
-        }  
+        } */  
+
+        if (board.getCurrentTurn())
+        {
+            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+            auto activations = network.run(board.board());
+            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+
+            std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
+
+            checkers.handleNetworkAction(activations, algorithm);
+        }
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);

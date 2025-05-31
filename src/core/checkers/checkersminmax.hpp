@@ -36,16 +36,16 @@ namespace NETWORK
         inline uint32_t getCheckedMoveCount() { return checkedMoves; }
         inline int32_t getCurrentBoardScore() { return boardScore; }
 
+        void sortMoves(std::vector<float>& board_state, std::vector<Move>& moves);
         Move getBestMove(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max);
     private:
 
         std::pair<int32_t, Move> minimax(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData,
-             bool max = true, uint32_t currentDepth = 0, int32_t alpha = -std::numeric_limits<int32_t>::max(), int32_t beta = std::numeric_limits<int32_t>::max());
+             bool max = true, uint32_t currentDepth = 0, uint32_t maxDepth = 1, int32_t alpha = -std::numeric_limits<int32_t>::max(), int32_t beta = std::numeric_limits<int32_t>::max());
         int32_t evaluatePosition(std::vector<float>& currentBoard, bool max);
         std::vector<float> getTrainingLabel(uint32_t moveIndex);
-
+        
         int32_t valueMove(std::vector<float>& board_state, const Move& move);
-        void sortMoves(std::vector<float>& board_state, std::vector<Move>& moves);
   
         bool isGameOver(std::vector<float>& board_state, bool max)
         {

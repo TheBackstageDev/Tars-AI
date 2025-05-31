@@ -44,11 +44,38 @@ bool isClicked(const ImVec2 center, const float tile_size)
 int32_t currentSelectedPiece{-1};
 std::vector<Move> movesPossibleCurrentPiece{};
 
-void Checkers::handleNetworkAction(std::vector<float>& activations)
+void Checkers::handleNetworkAction(std::vector<float>& activations, NETWORK::CheckersMinMax& algorithm)
 {
-    std::vector<float> board_state = board.board();
-    Move selectedMove;
-    bool foundValidMove = false;
+    std::vector<float>& board_state = board.board();
+    std::vector<Move> currentMoves = board.getMoves(true, board_state);
+    Move selectedMove{0, 0};
+
+    std::vector<uint32_t> sortedIndices(board.getSize() * board.getSize());
+    std::iota(sortedIndices.begin(), sortedIndices.end(), 0);
+    std::sort(sortedIndices.begin(), sortedIndices.end(), [&](uint32_t a, uint32_t b) {
+        return activations[a] > activations[b]; 
+    });
+
+    for (uint32_t choice : sortedIndices)
+    {
+        std::vector<Move> candidateMoves;
+
+        std::copy_if(currentMoves.begin(), currentMoves.end(), std::back_inserter(candidateMoves), [&](const Move& move){
+            return move.endPos == choice;
+        });
+
+        if (!candidateMoves.empty()) // Found at least one move
+        {
+            algorithm.sortMoves(board_state, candidateMoves);
+            selectedMove = candidateMoves.front();
+            break; 
+        }
+
+        activations[choice] = 0.0f; 
+    }
+
+    if (selectedMove.startPos == 0 && selectedMove.endPos == 0)
+        return;
 
     board.makeMove(selectedMove, board_state);
     board.changeTurn();
