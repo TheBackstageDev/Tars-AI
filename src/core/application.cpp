@@ -193,7 +193,7 @@ namespace core
 
     void application::runCheckers(Checkers& checkers, Board& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
-        /* if (board.getCurrentTurn())
+        if (board.getCurrentTurn())
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
             auto move = algorithm.getBestMove(board.board(), trainingData, true);
@@ -205,18 +205,18 @@ namespace core
 
             std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
             std::cout << "It checked " << std::to_string(algorithm.getCheckedMoveCount()) << " moves \n";
-        } */  
+        }  
 
-        if (board.getCurrentTurn())
+        /* if (board.getCurrentTurn())
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
             auto activations = network.run(board.board());
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
-            std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
+            std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() << " ns" << std::endl;
 
             checkers.handleNetworkAction(activations, algorithm);
-        }
+        } */
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
@@ -508,7 +508,7 @@ namespace core
         Board board{board_size};
         Checkers checkers(board, 100.f);
 
-        NETWORK::CheckersMinMax algorithm(6, board);
+        NETWORK::CheckersMinMax algorithm(1, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;

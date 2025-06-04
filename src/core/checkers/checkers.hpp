@@ -7,6 +7,15 @@
 #include <imgui/imgui/backends/imgui_impl_opengl3.h>
 #include "checkersminmax.hpp"
 
+#include <vector>
+
+enum Difficulty
+{
+    Easy,
+    Medium,
+    Hard
+};
+
 class Checkers 
 {
 public:
@@ -37,7 +46,15 @@ private:
     void drawPiece(ImDrawList* drawlist, const ImU32 color, const ImVec2 center, const uint32_t id);
     void drawCrown(ImDrawList* drawlist, ImVec2 center);
 
+    void drawLeaderboard();
+    void incrementLeaderboard(const std::string name);
+
     Board& board;
+
+    Difficulty selectedDifficulty{Difficulty::Easy};
+
+    // 3 leaderboards for 3 different difficulties
+    std::array<std::vector<std::pair<std::string, int32_t>>, 3> leaderboard;
 
     float tile_size{0};
     const float margin = 20.f;

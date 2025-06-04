@@ -99,6 +99,8 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
     }
 }
 
+char winner[128] = "";
+
 void Checkers::drawGameOverScreen()
 {
     if (board.isGameOver(board.getCurrentTurn(), board.board()) || board.isGameOver(!board.getCurrentTurn(), board.board())) 
@@ -112,6 +114,12 @@ void Checkers::drawGameOverScreen()
             std::string winnerText = (board.getCurrentTurn() == false) ? "Bot Wins!" : "Player Wins!";
             ImGui::TextColored(ImVec4(255, 215, 0, 255), "%s", winnerText.c_str()); 
 
+            ImGui::Text("Please insert the name of the Winner!");
+            if (ImGui::InputText("Winner name...", winner, 128 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
+            {
+                incrementLeaderboard(std::string(winner));
+            }
+
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 50, 50, 255)); 
             if (ImGui::Button("Restart Game"))
             {
@@ -119,9 +127,6 @@ void Checkers::drawGameOverScreen()
                 ImGui::CloseCurrentPopup();
             }
             ImGui::PopStyleColor();
-            
-            if (ImGui::Button("Exit"))
-                exit(0);
 
             ImGui::EndPopup();
         }
@@ -202,23 +207,94 @@ void Checkers::drawBoard()
     drawGameOverScreen();
 }
 
+void Checkers::drawLeaderboard()
+{
+    const auto& leaders = leaderboard[selectedDifficulty];
+
+    ImGui::Begin("Leaderboard");
+        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]); 
+        const char* difficultyStr = selectedDifficulty == Difficulty::Easy ? "Easy" : 
+                                selectedDifficulty == Difficulty::Medium ? "Medium" : "Hard";
+        ImGui::TextColored(ImVec4(1.0f, 0.843f, 0.0f, 1.0f), "%s Difficulty Leaderboard", difficultyStr);
+        ImGui::PopFont();
+        ImGui::Separator();
+
+        const float TABLE_WIDTH = 300.0f;
+        ImGui::SetNextItemWidth(TABLE_WIDTH);
+        
+        if (ImGui::BeginTable("LeaderboardTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+        {
+            ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+            ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Score", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableHeadersRow();
+
+            for (int32_t i = 0; i < leaders.size(); ++i)
+            {
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("#%d", i + 1);
+                
+                ImGui::TableSetColumnIndex(1);
+                if (i < 3)
+                {
+                    ImVec4 medalColor = (i == 0) ? ImVec4(1.0f, 0.843f, 0.0f, 1.0f) :  // Gold
+                                    (i == 1) ? ImVec4(0.753f, 0.753f, 0.753f, 1.0f) :  // Silver
+                                                ImVec4(0.804f, 0.498f, 0.196f, 1.0f);  // Bronze
+                    ImGui::TextColored(medalColor, "%s", leaders[i].first.c_str());
+                }
+                else
+                {
+                    ImGui::Text("%s", leaders[i].first.c_str());
+                }
+                
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%d", leaders[i].second);
+            }
+            
+            ImGui::EndTable();
+        }
+
+        if (leaders.empty())
+        {
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No scores recorded yet!");
+        }
+
+    ImGui::End();
+}
+
+void Checkers::incrementLeaderboard(const std::string name)
+{
+    auto& leaders = leaderboard[selectedDifficulty];
+    auto it = std::find_if(leaders.begin(), leaders.end(), [&](const auto& entry) {
+        return entry.first == name;
+    });
+
+    if (it != leaders.end()) {
+        it->second++;
+    } else {
+        leaders.emplace_back(name, 1);
+    }
+
+    std::sort(leaders.begin(), leaders.end(), [&](const auto& a, const auto& b ){
+        return a.second > b.second;
+    });
+}
+
 void Checkers::drawInfo(int32_t boardScore)
 {
-    ImVec2 window_pos = ImGui::GetWindowPos();
-    ImVec2 board_start = ImVec2(window_pos.x + margin, window_pos.y + margin);
-    ImVec2 info_start = ImVec2(board_start.x + tile_size * (board.getSize() + 1), window_pos.y);
-
-    float progress = std::clamp((boardScore / 100.0f), -1.0f, 1.0f); 
-
     ImGui::Begin("Info");
+        const char* difficulties[] = { "Easy", "Medium", "Hard" };
 
-    ImVec2 barSize(20, board.getSize() * tile_size); 
-    ImVec2 barPos(info_start.x, info_start.y); 
-
-    ImDrawList* drawlist = ImGui::GetWindowDrawList();
-
-    drawlist->AddRectFilled(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), IM_COL32(50, 50, 50, 255));
-    drawlist->AddRectFilled(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y * (progress)), PLR1_COLOR);
+        ImGui::BeginChild("##Options");
+            ImGui::Text("Select Difficulty:");
+            int difficultyIndex = static_cast<int>(selectedDifficulty);
+            if (ImGui::Combo("##DifficultyCombo", &difficultyIndex, difficulties, IM_ARRAYSIZE(difficulties))) {
+                selectedDifficulty = static_cast<Difficulty>(difficultyIndex);
+            }
+        ImGui::EndChild();
+        drawLeaderboard();
 
     ImGui::End();
 }

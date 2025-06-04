@@ -27,11 +27,6 @@ namespace NETWORK
 
     Move CheckersMinMax::getBestMove(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max)
     {
-        for (int32_t currentSearch = 1; currentSearch < depth; ++currentSearch)
-            minimax(board_state, trainingData, max, 0, currentSearch);
-
-        std::cout << "Count of Permutations: " << permutations.size() << std::endl;
-
         return minimax(board_state, trainingData, max, 0, depth).second;
     }
 
@@ -55,7 +50,7 @@ namespace NETWORK
         Move chosenMove{};
         sortMoves(board_state, moves);
 
-        bool _inserted{true};
+        bool _inserted{false};
 
         for (Move move : moves)
         {
@@ -64,17 +59,15 @@ namespace NETWORK
 
             checkedMoves++;
 
-            auto [iter, inserted] = permutations.try_emplace(tempBoard, evaluatePosition(tempBoard, max));
-
-            int32_t value = iter->second;
+            auto [iter, inserted] = permutations.try_emplace(tempBoard, 0);
 
             if (inserted)
             {
-                value = minimax(tempBoard, trainingData, !max, currentDepth + 1, maxDepth, alpha, beta).first;
-                iter->second = value; 
+                iter->second = minimax(tempBoard, trainingData, !max, currentDepth + 1, maxDepth, alpha, beta).first; 
+                _inserted = true;
             }
-            else
-                _inserted = false;
+
+            int32_t value = iter->second;
 
             if ((max && value > bestValue) || (!max && value < bestValue))
             {
