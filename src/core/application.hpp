@@ -10,6 +10,8 @@
 #include "checkers/checkers.hpp"
 #include "checkers/checkersminmax.hpp"
 
+#include "audio.hpp"
+
 namespace core
 {
     enum class CurrentPart
@@ -52,6 +54,7 @@ namespace core
 
         std::thread* networkThread = nullptr;
 
+        SoundHandle soundHandle;
         std::unique_ptr<window_t> window;
     };
     

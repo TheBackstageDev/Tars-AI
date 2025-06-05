@@ -32,8 +32,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     src/
     src/deps/
     deps/
-    deps/glfw/include
-    deps/imgui/imgui
+    deps/glfw/include/
+    deps/imgui/imgui/
+    deps/miniaudio/
     ${CUDA_INCLUDE_DIRS}
 )
 
@@ -42,6 +43,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glad
     opengl32
     imgui
+    miniaudio
     ${CUDA_LIBRARIES}
     OpenMP::OpenMP_CXX
     cublas                     
