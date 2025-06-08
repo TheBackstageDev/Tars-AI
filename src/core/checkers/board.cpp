@@ -5,6 +5,8 @@
 #include <string>
 #include <iostream>
 
+#include "core/audio.hpp"
+
 Board::Board(uint32_t board_size)
     : board_size(board_size)
 {
@@ -36,7 +38,7 @@ void Board::initiateBoard()
     }
 }
 
-void Board::makeMove(const Move &move, std::vector<float> &board_state)
+void Board::makeMove(Move &move, std::vector<float> &board_state, bool isMinimax)
 {
     if (!isWithinBounds(move.startPos) && !isWithinBounds(move.endPos))
         return;
@@ -50,8 +52,33 @@ void Board::makeMove(const Move &move, std::vector<float> &board_state)
     if ((board_state[move.endPos] == -0.5 && getY(move.endPos) == 0) ||           // PLR reaches top row
         (board_state[move.endPos] == 0.5 && getY(move.endPos) == board_size - 1)) // BOT reaches bottom row
     {
-        board_state[move.endPos] *= 2;
+        move.flag = MoveFlag::PROMOTION;
     }
+
+    if (!isMinimax)
+        switch(move.flag)
+        {
+            // Just a normal Move
+            case MoveFlag::NONE:
+            {   
+                core::SoundHandle::play("move");
+                break;
+            }
+            case MoveFlag::CAPTURE:
+            case MoveFlag::MULTICAPTURE:
+            {
+                core::SoundHandle::play("capture");
+                break;
+            }
+            case MoveFlag::PROMOTION:
+            {
+                board_state[move.endPos] *= 2;
+                core::SoundHandle::play("promote");
+                break;
+            }
+            default:
+                break;
+        }
 }
 
 bool Board::canCapture(const Move &move, std::vector<float> &board_state, bool max)
@@ -150,8 +177,8 @@ void Board::checkMoves(const uint32_t pieceIndex, bool max, std::vector<Move> &m
 
         if (isWithinBounds(moveToCheck.endPos) && board_state[moveToCheck.endPos] == 0)
         {
-            if ((board_state[moveToCheck.endPos] == -0.5 && getY(moveToCheck.endPos) == 0) ||           // PLR reaches top row
-                (board_state[moveToCheck.endPos] == 0.5 && getY(moveToCheck.endPos) == board_size - 1)) // BOT reaches bottom row
+            if ((board_state[pieceIndex] == -0.5 && getY(moveToCheck.endPos) == 0) ||           // PLR reaches top row
+                (board_state[pieceIndex] == 0.5 && getY(moveToCheck.endPos) == board_size - 1)) // BOT reaches bottom row
             {
                 moveToCheck.flag = MoveFlag::PROMOTION;
             }

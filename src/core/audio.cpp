@@ -43,7 +43,7 @@ namespace core
     {
         if (sounds.find(name) == sounds.end()) 
         {
-            std::cerr << "Error: Sound '" << name << "' not found!\n";
+            std::cerr << "Error: Sound '" << name << "' not found! \n";
             return;
         }
         ma_sound_stop(&sounds[name]);
@@ -55,7 +55,7 @@ namespace core
 
         if(!std::filesystem::exists(path))
         {
-            std::cerr << "path " << path << " is invalid.";
+            std::cerr << "path " << path << " is invalid. \n";
             return;
         }
 
@@ -63,5 +63,18 @@ namespace core
         if (result != MA_SUCCESS) {
             throw std::runtime_error("Failed to add sound!");
         }
+    }
+
+    void SoundHandle::remove(const char* name)
+    {
+        auto needle = sounds.find(name);
+        if (needle == sounds.end()) 
+        {
+            std::cerr << "Error: Sound '" << name << "' not found! \n";
+            return;
+        } 
+
+        ma_sound_uninit(&sounds[name]);
+        sounds.erase(needle);
     }
 } // namespace core

@@ -49,7 +49,7 @@ public:
     Board(uint32_t board_size);
     ~Board() = default;
 
-    void makeMove(const Move& move, std::vector<float>& board_state);
+    void makeMove(Move& move, std::vector<float>& board_state, bool isMinimax = false);
 
     inline void restart() { initiateBoard(); }
 

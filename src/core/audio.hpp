@@ -17,7 +17,9 @@ namespace core
 
         static void play(const char* name);
         static void stop(const char* name);
+
         static void add(const char* name, const char* path);
+        static void remove(const char* name);
     private:
         ma_engine_config engineConfig;
 

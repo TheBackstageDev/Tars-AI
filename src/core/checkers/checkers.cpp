@@ -7,6 +7,9 @@
 
 #include <algorithm>
 
+#include <cstdlib>
+#include <ctime>
+
 // Player Colors
 #define PLR1_COLOR IM_COL32(225, 0, 0, 255)     // Red (Player 1)
 #define PLR2_COLOR IM_COL32(225, 208, 150, 255) // Beige/Sepia (Player 2)
@@ -41,6 +44,7 @@ bool isClicked(const ImVec2 center, const float tile_size)
     return false;
 }
 
+// global variables
 int32_t currentSelectedPiece{-1};
 std::vector<Move> movesPossibleCurrentPiece{};
 
@@ -93,9 +97,9 @@ void Checkers::handleAction(int32_t pieceIndex, int32_t moveIndex)
     {
         board.makeMove(*moveToMake, board.board());
         board.changeTurn();
-        
-        movesPossibleCurrentPiece = {};
+
         currentSelectedPiece = -1;
+        movesPossibleCurrentPiece = {};
     }
 }
 
@@ -157,9 +161,16 @@ void Checkers::drawBoard()
         movesPossibleCurrentPiece = board.getMovesForPiece(currentSelectedPiece, board.board());
     }
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseReleased(ImGuiMouseButton_Left))
     {
+        moveIndex = getCellMouseAt(board_start);
         handleAction(currentSelectedPiece, moveIndex);
+
+        if (((board.getX(moveIndex) * board.getY(moveIndex)) <= board_size * board_size) && board_state[moveIndex] == 0)
+        {
+            currentSelectedPiece = -1;
+            movesPossibleCurrentPiece = {};
+        }
     }
 
     for (int x = 0; x < board_size; ++x)
@@ -170,11 +181,8 @@ void Checkers::drawBoard()
             ImVec2 bottom_right = ImVec2(top_left.x + tile_size, top_left.y + tile_size);
 
             const uint32_t pieceIndex = x * board_size + y;
-            const float currentPiece = board_state[pieceIndex];
 
             ImU32 color = ((x + y) % 2 == 0) ? BOARD_LIGHT : BOARD_DARK;
-            ImU32 pieceColor = currentPiece > 0 ? PLR1_COLOR : PLR2_COLOR;
-
             ImVec2 center(top_left.x + tile_size / 2, top_left.y + tile_size / 2);
 
             if (pieceIndex == currentSelectedPiece)
@@ -196,10 +204,35 @@ void Checkers::drawBoard()
             ImVec2 text_pos = ImVec2(board_start.x + x * tile_size + (tile_size / 20), board_start.y + (y + 1) * tile_size - (tile_size / 4));
 
             ImGui::GetWindowDrawList()->AddText(text_pos, ((x + y) % 2 == 0) ? BOARD_DARK : BOARD_LIGHT, getHouse(x, y).c_str());
-
-            if (currentPiece != 0)
-                drawPiece(drawlist, pieceColor, center, pieceIndex);
         }
+    }
+
+    ImVec2 selectedCenter;
+    ImU32 selectedColor;
+
+    for (int i = 0; i < board_size * board_size; ++i)
+    {
+        const float currentPiece = board_state[i];
+        ImU32 pieceColor = currentPiece > 0 ? PLR1_COLOR : PLR2_COLOR;
+
+        ImVec2 top_left = ImVec2(board_start.x + (i / board_size) * tile_size, board_start.y + (i % board_size) * tile_size);
+        ImVec2 bottom_right = ImVec2(top_left.x + tile_size, top_left.y + tile_size);
+        
+        ImVec2 center(top_left.x + tile_size / 2, top_left.y + tile_size / 2);
+
+        if (i == currentSelectedPiece) {
+            selectedCenter = center;
+            selectedColor = pieceColor;
+            continue;
+        }
+
+        if (board_state[i] != 0)
+            drawPiece(drawlist, pieceColor, center, i);
+    }
+
+    if (currentSelectedPiece != -1)
+    {
+        drawPiece(drawlist, selectedColor, selectedCenter, currentSelectedPiece);
     }
 
     ImGui::End();
@@ -282,7 +315,7 @@ void Checkers::incrementLeaderboard(const std::string name)
     });
 }
 
-void Checkers::drawInfo(int32_t boardScore)
+void Checkers::drawInfo(int32_t boardScore, Bot& bot)
 {
     ImGui::Begin("Info");
         const char* difficulties[] = { "Easy", "Medium", "Hard" };
@@ -295,8 +328,9 @@ void Checkers::drawInfo(int32_t boardScore)
             }
         ImGui::EndChild();
         drawLeaderboard();
-
     ImGui::End();
+
+    bot.drawBot(true);
 }
 
 void Checkers::drawCrown(ImDrawList *drawlist, ImVec2 center)
@@ -328,13 +362,18 @@ void Checkers::drawCrown(ImDrawList *drawlist, ImVec2 center)
     drawlist->AddPolyline(outlinePoints, IM_ARRAYSIZE(outlinePoints), IM_COL32(255, 255, 0, 255), ImDrawFlags_None, 2.0f);
 }
 
-void Checkers::drawPiece(ImDrawList *drawlist, const ImU32 color, const ImVec2 center, const uint32_t id)
+void Checkers::drawPiece(ImDrawList *drawlist, const ImU32 color, ImVec2 center, const uint32_t id)
 {
     std::string windowId = "Piece##" + std::to_string(id);
 
     ImGui::SetNextWindowSize(ImVec2(tile_size, tile_size));
     ImGui::SetNextWindowPos(ImVec2(center.x - tile_size / 2, center.y - tile_size / 2));
     ImGui::Begin(windowId.c_str(), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground);
+    
+    if (id == currentSelectedPiece && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        ImVec2 mousePos = ImGui::GetMousePos();
+        center = mousePos; 
+    }
 
     const float radius = (tile_size / 2) - 10;
 

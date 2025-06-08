@@ -45,7 +45,7 @@ namespace NETWORK
         int32_t evaluatePosition(std::vector<float>& currentBoard, bool max);
         std::vector<float> getTrainingLabel(uint32_t moveIndex);
         
-        int32_t valueMove(std::vector<float>& board_state, const Move& move);
+        int32_t valueMove(std::vector<float>& board_state, const Move& move, const bool max);
   
         bool isGameOver(std::vector<float>& board_state, bool max)
         {
@@ -60,7 +60,7 @@ namespace NETWORK
 
         Board& board;
 
-        int32_t boardScore;
+        int32_t boardScore{0};
         uint32_t moveNumber{0};
         uint32_t depth;
         uint32_t checkedMoves{0};

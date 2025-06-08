@@ -10,6 +10,7 @@
 #include "checkers/checkers.hpp"
 #include "checkers/checkersminmax.hpp"
 
+#include "gl/gltexture.hpp"
 #include "audio.hpp"
 
 namespace core
@@ -39,6 +40,7 @@ namespace core
         void runAITraining();
         void runMenu();
 
+        void initBots();
         void drawNetwork();
 
         CurrentPart part{CurrentPart::MENU};
@@ -52,6 +54,7 @@ namespace core
         mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset{};
         std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
+        std::vector<Bot> bots;
         std::thread* networkThread = nullptr;
 
         SoundHandle soundHandle;

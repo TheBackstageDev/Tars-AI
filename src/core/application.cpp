@@ -8,10 +8,12 @@
 #include "ntars/models/DenseNetwork.hpp"
 #include "ntars/base/data.hpp"
 
+#include "core/audio.hpp"
+#include "core/gl/gltexture.hpp"
+
 #include <random>
 #include <chrono>
 #include "../config.h"
-
 
     /* float learning_rate_threshold = 0.9;
     float result = 0.0;
@@ -109,12 +111,25 @@ void trainCheckersNetwork()
         return {texture, image, guess};
     }
 
+    void loadAudios()
+    {
+        std::string audioPath = "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\audio";
+        std::string movePath = audioPath + "/move.mp3";
+        std::string capturePath = audioPath + "/capture.mp3";
+        std::string promotePath = audioPath + "/promote.mp3";
+
+        core::SoundHandle::add("move", movePath.c_str());
+        core::SoundHandle::add("capture", capturePath.c_str());
+        core::SoundHandle::add("promote", promotePath.c_str());
+    }
+
 namespace core
 {
     application::application(const std::string& title, uint32_t width, uint32_t height)
     {
         //NeuralNetworkTrain();
         //trainCheckersNetwork();
+        
         dataset = mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
 
         const auto& data = dataset.training_images;
@@ -143,7 +158,9 @@ namespace core
         image = std::get<1>(imageTuple);
         actualLabel = std::get<2>(imageTuple);
         
+        loadAudios();
         imguiSetup();
+        initBots();
     }
 
     application::~application()
@@ -191,20 +208,54 @@ namespace core
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
 
+    bool checkersThreadRunning {false};
+
+    void application::initBots()
+    {
+        BotInfo testBot;
+        testBot.name = "Terminator";
+        testBot.blunderChance = 0.2f; // Slight chance of mistakes
+
+        testBot.speeches = {
+            { "Processing... Continue gameplay.", "neutral", SpeechType::Neutral },
+            { "Target acquired. Eliminated.", "capture", SpeechType::Capture },
+            { "Multiple threats neutralized. You cannot resist.", "multi_capture", SpeechType::MultiCapture },
+            { "Acceptable. But ultimately ineffective.", "good_move", SpeechType::GoodMove },
+            { "Strategic error detected. Adjust or be terminated.", "bad_move", SpeechType::BadMove },
+            { "Mission complete. You are terminated.", "win", SpeechType::Win },
+            { "This outcome is illogical. Recalculating strategy...", "lose", SpeechType::Lose },
+            { "You fight, but your fate is sealed.", "taunt", SpeechType::Taunt },
+            { "Continue. Your survival rate remains low.", "encouragement", SpeechType::Encouragement },
+            { "Unexpected. You are adapting. That is… interesting.", "surprise", SpeechType::Surprise }
+        };
+
+        bots.emplace_back(Bot(testBot, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+    }
+
     void application::runCheckers(Checkers& checkers, Board& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
-        if (board.getCurrentTurn())
+        if (board.getCurrentTurn() && !checkersThreadRunning)
         {
-            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-            auto move = algorithm.getBestMove(board.board(), trainingData, true);
-            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+            std::thread aiThread([&]() 
+            {  
+                checkersThreadRunning = true;
+                
+                std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+                auto move = algorithm.getBestMove(board.board(), trainingData, true);
+                std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
-            board.makeMove(move, board.board());
-            algorithm.incrementMoveCount();
-            board.changeTurn();
+                board.makeMove(move, board.board());
+                algorithm.incrementMoveCount();
 
-            std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
-            std::cout << "It checked " << std::to_string(algorithm.getCheckedMoveCount()) << " moves \n";
+                board.changeTurn();
+
+                std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
+                std::cout << "It checked " << std::to_string(algorithm.getCheckedMoveCount()) << " moves \n";
+
+                checkersThreadRunning = false;
+            });
+
+            aiThread.detach(); 
         }  
 
         /* if (board.getCurrentTurn())
@@ -221,11 +272,12 @@ namespace core
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
         checkers.drawBoard();
-        checkers.drawInfo(algorithm.getCurrentBoardScore());
+        checkers.drawInfo(algorithm.getCurrentBoardScore(), bots.at(0));
 
-        ImGui::Begin("Extra Info", nullptr, ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Extra Info", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
         ImGui::Text("Current Turn: %s", board.getCurrentTurn() == false ? "player" : "bot");
+        ImGui::Text("Board Evaluation: %2.f", static_cast<float>(algorithm.getCurrentBoardScore()));
         
         if (ImGui::Button("Exit To Menu", ImVec2(300, 50)))
         {
@@ -344,16 +396,6 @@ namespace core
     }
 
     const size_t displayAmmount = 70;
-
-    size_t getRandomNeuron(size_t neurons)
-    {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());  
-        std::uniform_int_distribution<size_t> neuronSelector(0, neurons - 1);
-
-        return neuronSelector(gen);
-    }
-
     const float neuronSize = 3.f;
 
     void application::drawNetwork()
@@ -508,7 +550,7 @@ namespace core
         Board board{board_size};
         Checkers checkers(board, 100.f);
 
-        NETWORK::CheckersMinMax algorithm(1, board);
+        NETWORK::CheckersMinMax algorithm(8, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;

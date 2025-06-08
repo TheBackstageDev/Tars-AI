@@ -6,8 +6,10 @@
 #include "board.hpp"
 #include <imgui/imgui/backends/imgui_impl_opengl3.h>
 #include "checkersminmax.hpp"
+#include "checkersbot.hpp"
 
 #include <vector>
+#include <map>
 
 enum Difficulty
 {
@@ -22,7 +24,7 @@ public:
     Checkers(Board& board, const float tile_size);
 
     void drawBoard();
-    void drawInfo(int32_t boardScore);
+    void drawInfo(int32_t boardScore, Bot& bot);
 
     void handleNetworkAction(std::vector<float>& activations, NETWORK::CheckersMinMax& algorithm);
     void handleAction(int32_t pieceIndex, int32_t moveIndex);
@@ -43,7 +45,7 @@ public:
 private:
     void drawGameOverScreen();
 
-    void drawPiece(ImDrawList* drawlist, const ImU32 color, const ImVec2 center, const uint32_t id);
+    void drawPiece(ImDrawList* drawlist, const ImU32 color, ImVec2 center, const uint32_t id);
     void drawCrown(ImDrawList* drawlist, ImVec2 center);
 
     void drawLeaderboard();
