@@ -58,12 +58,14 @@ public:
     inline uint32_t getCurrentSpeech() { return info.currentSpeech; }
     inline float getBlunderChance() { return info.blunderChance; }
 
-    bool shouldBlunder();
     void chooseSpeech(SpeechType type);
+    void handleSpeech(int32_t boardScore);
+    bool shouldBlunder();
 
     void drawBot(bool showSpeech = false);
 
 private:
+
     BotInfo info;
     std::unique_ptr<gl::GLTexture> image;
 };
