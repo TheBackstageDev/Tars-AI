@@ -56,7 +56,8 @@ namespace NETWORK
         }    
 
         // Searching Variables
-        std::unordered_map<std::vector<float>, int32_t, VectorHash> permutations;
+        std::unordered_map<std::vector<float>, std::pair<int32_t, int32_t>, VectorHash> permutations;
+        std::vector<Move> previousBestMoves;
 
         Board& board;
 
