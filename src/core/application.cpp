@@ -95,10 +95,10 @@ void trainCheckersNetwork()
 
         static std::random_device rd;
         static std::mt19937 gen(rd());
-        std::uniform_int_distribution<uint32_t> dist(0, dataset.test_images.size()); 
+        std::uniform_int_distribution<uint32_t> dist(0, 60000); 
         uint32_t guess = dist(gen);
 
-        std::vector<uint8_t>& image = dataset.test_images.at(guess);
+        std::vector<uint8_t>& image = dataset.training_images.at(guess);
 
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
@@ -214,7 +214,7 @@ namespace core
     {
         BotInfo testBot;
         testBot.name = "Terminator";
-        testBot.blunderChance = 0.2f; 
+        testBot.blunderChance = 0.2f; // Slight chance of mistakes
 
         testBot.speeches = {
             { "Processing... Continue gameplay.", "neutral", SpeechType::Neutral },
@@ -256,7 +256,7 @@ namespace core
             });
 
             aiThread.detach(); 
-        }
+        }  
 
         /* if (board.getCurrentTurn())
         {
@@ -309,7 +309,7 @@ namespace core
                 ImGui::SetWindowFontScale(1.2f); 
 
                 ImGui::Image(currentImage, ImVec2(450, 450));
-                ImGui::Text("Current Number Displayed %i", dataset.test_labels.at(actualLabel));
+                ImGui::Text("Current Number Displayed %i", dataset.training_labels.at(actualLabel));
                 ImGui::Text("Current AI Guess: %i", AIGuess);
 
                 std::vector<std::pair<size_t, float>> sortedActivations{};
@@ -550,7 +550,7 @@ namespace core
         Board board{board_size};
         Checkers checkers(board, 100.f);
 
-        NETWORK::CheckersMinMax algorithm(20, board);
+        NETWORK::CheckersMinMax algorithm(8, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
