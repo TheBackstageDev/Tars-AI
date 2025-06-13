@@ -27,9 +27,9 @@ enum class MoveFlag
 
 struct Move
 {
-    uint32_t startPos;
-    uint32_t endPos;
-    std::vector<uint32_t> middlePositions;
+    uint64_t moveMask;
+    uint64_t captureMask;
+
     MoveFlag flag{MoveFlag::NONE};
 
     static constexpr std::array<int32_t, 4> getMoveOffsets()
@@ -39,8 +39,16 @@ struct Move
 
     constexpr bool operator==(const Move& other) const
     {
-        return startPos == other.startPos && endPos == other.endPos && other.middlePositions == middlePositions;
+        return moveMask == other.moveMask && captureMask == other.captureMask;
     }
+};
+
+struct Bitboard
+{
+    uint64_t maxPieces;   
+    uint64_t minPieces;  
+    uint64_t queens;      
+    uint64_t occupied;    // Stores all occupied spaces
 };
 
 class Board
@@ -111,6 +119,8 @@ private:
 
     bool currentTurn{MIN};
     uint32_t board_size{0};
+
+    Bitboard bit_board_state;
     std::vector<float> board_state;
 };
 

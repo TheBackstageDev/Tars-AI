@@ -16,6 +16,11 @@ Board::Board(uint32_t board_size)
 
 void Board::initiateBoard()
 {
+    bit_board_state.maxPieces = 0uLL;
+    bit_board_state.minPieces = 0uLL;
+    bit_board_state.queens = 0uLL;
+    bit_board_state.occupied = 0uLL;
+
     for (int x = 0; x < board_size; ++x)
     {
         for (int y = 0; y < board_size; ++y)
@@ -28,14 +33,18 @@ void Board::initiateBoard()
                 if (y < board_size / 2 - 1)
                 {
                     board_state[index] = 0.5;
+                    bit_board_state.maxPieces |= (1ULL << index);
                 }
                 else if (y > board_size / 2)
                 {
                     board_state[index] = -0.5;
+                    bit_board_state.minPieces |= (1ULL << index);
                 }
             }
         }
     }
+
+    bit_board_state.occupied = bit_board_state.maxPieces | bit_board_state.minPieces;
 }
 
 void Board::makeMove(Move &move, std::vector<float> &board_state, bool isMinimax)

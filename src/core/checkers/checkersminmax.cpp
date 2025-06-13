@@ -204,8 +204,8 @@ namespace NETWORK
             }
         }
 
-        score += (maxPieceCount - minPieceCount) * pieceValue;
-        score += (maxQueenCount - minQueenCount) * queenValue;
+        score += (maxPieceCount - minPieceCount) * pieceValue * 2;
+        score += (maxQueenCount - minQueenCount) * queenValue * 2;
         score += (maxMoves.size() - minMoves.size()) * pieceValue / 2; 
         
         for (const Move& move : maxMoves)
