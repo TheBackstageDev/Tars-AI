@@ -43,6 +43,57 @@ struct Move
     }
 };
 
+struct BoardDistances
+{
+    static constexpr std::array<uint8_t, 64> toTopEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = i / 8;
+        return arr;
+    }();
+
+    static constexpr std::array<uint8_t, 64> toBottomEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = 7 - (i / 8);
+        return arr;
+    }();
+
+    static constexpr std::array<uint8_t, 64> toLeftEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = i % 8;
+        return arr;
+    }();
+
+    static constexpr std::array<uint8_t, 64> toRightEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = 7 - (i % 8);
+        return arr;
+    }();
+
+    static constexpr std::array<uint8_t, 64> toUpLeftEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = std::min(toTopEdge[i], toLeftEdge[i]);
+        return arr;
+    }();
+
+    static constexpr std::array<uint8_t, 64> toUpRightEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = std::min(toTopEdge[i], toRightEdge[i]);
+        return arr;
+    }();
+
+    static constexpr std::array<uint8_t, 64> toDownLeftEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = std::min(toBottomEdge[i], toLeftEdge[i]);
+        return arr;
+    }();
+
+    static constexpr std::array<uint8_t, 64> toDownRightEdge = [] {
+        std::array<uint8_t, 64> arr{};
+        for (int i = 0; i < 64; ++i) arr[i] = std::min(toBottomEdge[i], toRightEdge[i]);
+        return arr;
+    }();
+};
+
 class Board
 {
 public:
@@ -112,6 +163,68 @@ private:
     bool currentTurn{MIN};
     uint32_t board_size{0};
     std::vector<float> board_state;
+};
+
+struct BitMove
+{
+    uint64_t indexMask;
+    uint64_t moveMask;
+    uint64_t captureMask;
+
+    MoveFlag flag{MoveFlag::NONE};
+
+    static constexpr std::array<uint32_t, 4> getMoveOffsets()
+    {
+        return {9, 7, 9, 7}; // double for the queen moves
+    }
+
+    constexpr bool operator==(const BitMove& other) const
+    {
+        return moveMask == other.moveMask && captureMask == other.captureMask;
+    }
+};
+
+struct BoardStruct
+{
+    std::array<uint64_t, 2> board_state;
+    uint64_t queenBoard;
+    uint64_t occupiedBoard;
+};
+
+class BitBoard
+{
+public:
+    BitBoard();
+    ~BitBoard() = default;
+
+    inline void restart() { initiateBoard(); }  
+
+    void makeMove(const BitMove& move, BoardStruct& board, bool isMinimax = false);
+
+    std::vector<uint64_t> getPieceIndices(BoardStruct& board, bool max);
+    std::vector<BitMove> getMoves(BoardStruct& board, bool max);
+    std::vector<BitMove> getMovesForPiece(const uint64_t index, BoardStruct& board);
+
+    inline BoardStruct& bitboard() { return this->board; }
+    inline uint32_t getSize() { return 64; }
+    inline bool getCurrentTurn() const { return currentTurn; }
+    inline bool isGameOver(bool max, BoardStruct& board)
+    {
+        return getMoves(board, max).size() == 0;
+    }
+
+private:
+    void initiateBoard();
+
+    void checkMoves(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board);
+    void checkMovesQueen(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board);
+
+    void checkCaptures(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board, int64_t origin = -1, uint64_t captureMask = 0);
+
+    std::vector<uint64_t> currentPieceIndices;
+
+    bool currentTurn{MIN};
+    BoardStruct board;
 };
 
 #endif //BOARD_HPP

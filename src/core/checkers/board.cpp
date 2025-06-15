@@ -261,3 +261,191 @@ void Board::checkMovesQueen(const uint32_t pieceIndex, bool max, std::vector<Mov
         }
     }
 }
+
+// Bit board
+
+#define BOARD_SIZE 64
+
+BitBoard::BitBoard()
+{
+    currentPieceIndices.clear();
+
+    for (int x = 0; x < BOARD_SIZE; ++x)
+    {
+        for (int y = 0; y < BOARD_SIZE; ++y)
+        {
+            int index = x * BOARD_SIZE + y;
+
+            if ((x + y) % 2 == 1)
+            {
+                if (y < BOARD_SIZE / 2 - 1)
+                    board.board_state[MIN] |= (1ULL << index);
+                else if (y > BOARD_SIZE / 2)
+                    board.board_state[MAX] |= (1ULL << index);
+            }
+        }
+    }
+
+    board.occupiedBoard = board.board_state[MIN] | board.board_state[MAX];
+}
+
+void BitBoard::makeMove(const BitMove& move, BoardStruct& board, bool isMinimax)
+{
+    bool max = move.indexMask & board.board_state[MAX];
+
+    uint64_t& opponentMask = board.board_state[!max];
+    uint64_t& currentMask = board.board_state[max];
+
+    opponentMask &= ~(move.captureMask);
+    currentMask = (currentMask & ~move.indexMask) | move.moveMask;
+
+    board.occupiedBoard = board.board_state[MAX] | board.board_state[MIN];
+
+    if ((move.moveMask & (max ? 0xFF00000000000000ULL : 0x00000000000000FFULL)))
+        board.queenBoard |= move.moveMask;
+        
+    if (!isMinimax)
+        switch(move.flag)
+        {
+            // Just a normal Move
+            case MoveFlag::NONE:
+            {   
+                core::SoundHandle::play("move");
+                break;
+            }
+            case MoveFlag::CAPTURE:
+            case MoveFlag::MULTICAPTURE:
+            {
+                core::SoundHandle::play("capture");
+                break;
+            }
+            case MoveFlag::PROMOTION:
+            {
+                core::SoundHandle::play("promote");
+                break;
+            }
+            default:
+                break;
+        }
+}
+
+std::vector<uint64_t> BitBoard::getPieceIndices(BoardStruct& board, bool max)
+{
+    std::vector<uint64_t> indices;
+
+    uint64_t board_state = board.board_state[max];
+
+    while (board_state)
+    {
+        unsigned long index;
+        _BitScanForward64(&index, board_state); 
+
+        indices.push_back(1ULL << index);
+        board_state &= (board_state - 1);
+    }
+
+    return indices;
+}
+
+std::vector<BitMove> BitBoard::getMoves(BoardStruct& board, bool max)
+{
+    std::vector<BitMove> moves;
+
+    currentPieceIndices = getPieceIndices(board, max);
+
+    for (uint64_t index : currentPieceIndices)
+    {
+        if (!(board.queenBoard & index))
+            checkMoves(index, max, moves, board);
+        else
+            checkMovesQueen(index, max, moves, board);
+    }
+
+    return moves;
+}
+
+std::vector<BitMove> BitBoard::getMovesForPiece(const uint64_t index, BoardStruct& board)
+{
+    std::vector<BitMove> moves;
+
+    bool max = index & board.board_state[MAX];
+    
+    if (!(board.queenBoard & index))
+        checkMoves(index, max, moves, board);
+    else
+        checkMovesQueen(index, max, moves, board);
+    
+    return moves;
+}
+
+void BitBoard::checkMoves(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board)
+{
+    std::array<uint32_t, 4> directions = BitMove::getMoveOffsets();
+
+    for (int32_t d = 0; d < 2; ++d)
+    {
+        uint64_t MoveMask = 0;
+
+        if (max) MoveMask = (index << directions[d]);
+        else MoveMask = (index >> directions[d]);
+
+        if (!(MoveMask & board.occupiedBoard)) 
+            moves.emplace_back(index, MoveMask, 0, MoveFlag::NONE);
+        else 
+            checkCaptures(index, max, moves, board);
+    }
+}
+
+void BitBoard::checkMovesQueen(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board)
+{
+    std::array<uint32_t, 4> directions = BitMove::getMoveOffsets();
+
+    unsigned long rawIndex;
+    _BitScanForward64(&rawIndex, board.occupiedBoard);
+
+    for (int32_t i = 0; i < 4; ++i)
+    {
+        uint8_t maxDistance = 0;
+        uint32_t d = directions[i];
+
+        if (i == 0) maxDistance = BoardDistances::toUpLeftEdge[rawIndex];
+        if (i == 1) maxDistance = BoardDistances::toUpRightEdge[rawIndex];
+        if (i == 2)  maxDistance = BoardDistances::toDownLeftEdge[rawIndex];
+        if (i == 3)  maxDistance = BoardDistances::toDownRightEdge[rawIndex];
+
+        for (int32_t step = 1; step <= maxDistance; ++step)
+        {
+            uint64_t moveMask = (i > 1) ? index >> (step * d) : index << (step * d);
+
+            if (!(board.occupiedBoard & moveMask))
+            {
+                moves.emplace_back(index, moveMask, 0, MoveFlag::NONE);
+            }
+            else
+            {
+                checkCaptures(index, max, moves, board);
+                break;
+            }
+        }
+    }
+}
+
+void BitBoard::checkCaptures(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board, int64_t origin, uint64_t captureMask)
+{
+    std::array<uint32_t, 4> directions = BitMove::getMoveOffsets();
+
+    for (int32_t i = 0; i < 4; ++i)
+    {
+        uint32_t d = directions[i];
+
+        uint64_t jumpedPieceMask = (i > 1) ? index >> d : index << d;
+        uint64_t landingMask  = (i > 1) ? index >> (d * 2) : index << (d * 2);
+
+        if (!(landingMask & board.occupiedBoard)) continue; // is alreadly occupied
+        if (!(jumpedPieceMask & board.board_state[!max])) continue; // doesn't contain opponent piece;
+
+        moves.emplace_back(index, landingMask, jumpedPieceMask, MoveFlag::CAPTURE);
+
+        checkCaptures(landingMask, max, moves, board, index, captureMask | jumpedPieceMask);
+    }
+}

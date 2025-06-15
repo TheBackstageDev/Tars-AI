@@ -550,6 +550,10 @@ namespace core
         Board board{board_size};
         Checkers checkers(board, 100.f);
 
+        BitBoard bitBoard;
+
+        std::vector<uint64_t> moves = bitBoard.getPieceIndices(bitBoard.bitboard(), true);
+
         NETWORK::CheckersMinMax algorithm(20, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
