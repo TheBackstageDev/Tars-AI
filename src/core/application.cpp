@@ -548,11 +548,9 @@ namespace core
         const uint32_t board_size = 8;
 
         Board board{board_size};
-        Checkers checkers(board, 100.f);
 
         BitBoard bitBoard;
-
-        std::vector<uint64_t> moves = bitBoard.getPieceIndices(bitBoard.bitboard(), true);
+        Checkers checkers(bitBoard, 100.f);
 
         NETWORK::CheckersMinMax algorithm(20, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 

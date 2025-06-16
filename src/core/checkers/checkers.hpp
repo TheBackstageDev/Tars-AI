@@ -21,13 +21,13 @@ enum Difficulty
 class Checkers 
 {
 public:
-    Checkers(Board& board, const float tile_size);
+    Checkers(BitBoard& board, const float tile_size);
 
     void drawBoard();
     void drawInfo(int32_t boardScore, Bot& bot);
 
     void handleNetworkAction(std::vector<float>& activations, NETWORK::CheckersMinMax& algorithm);
-    void handleAction(int32_t pieceIndex, int32_t moveIndex);
+    void handleAction(uint64_t pieceIndex, uint64_t moveIndex);
 
     inline const int32_t getCellMouseAt(const ImVec2 boardStart) const
     {
@@ -51,7 +51,7 @@ private:
     void drawLeaderboard();
     void incrementLeaderboard(const std::string name);
 
-    Board& board;
+    BitBoard& board;
 
     Difficulty selectedDifficulty{Difficulty::Easy};
 

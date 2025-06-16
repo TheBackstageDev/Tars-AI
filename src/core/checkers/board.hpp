@@ -205,8 +205,10 @@ public:
     std::vector<BitMove> getMoves(BoardStruct& board, bool max);
     std::vector<BitMove> getMovesForPiece(const uint64_t index, BoardStruct& board);
 
-    inline BoardStruct& bitboard() { return this->board; }
-    inline uint32_t getSize() { return 64; }
+    inline BoardStruct& bitboard() { return board; }
+    inline void changeTurn() { currentTurn = !currentTurn; }
+
+    inline uint32_t getSize() { return 8; }
     inline bool getCurrentTurn() const { return currentTurn; }
     inline bool isGameOver(bool max, BoardStruct& board)
     {
