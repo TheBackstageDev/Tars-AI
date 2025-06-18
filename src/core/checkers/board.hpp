@@ -178,6 +178,13 @@ struct BoardStruct
     std::array<uint64_t, 2> board_state;
     uint64_t queenBoard;
     uint64_t occupiedBoard;
+
+    bool operator==(const BoardStruct& other) const {
+        return occupiedBoard == other.occupiedBoard &&
+               board_state[0] == other.board_state[0] &&
+               board_state[1] == other.board_state[1] &&
+               queenBoard == other.queenBoard;
+    }
 };
 
 class BitBoard

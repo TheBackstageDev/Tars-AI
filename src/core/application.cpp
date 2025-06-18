@@ -208,7 +208,7 @@ namespace core
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
 
-    bool checkersThreadRunning {false};
+    std::atomic<bool> checkersThreadRunning = false;
 
     void application::initBots()
     {
@@ -232,7 +232,12 @@ namespace core
         bots.emplace_back(Bot(testBot, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
     }
 
-    void application::runCheckers(Checkers& checkers, Board& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
+    void application::checkersBotSelectionMenu()
+    {
+
+    }
+
+    void application::runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
         if (board.getCurrentTurn() && !checkersThreadRunning)
         {
@@ -241,10 +246,10 @@ namespace core
                 checkersThreadRunning = true;
                 
                 std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-                auto move = algorithm.getBestMove(board.board(), trainingData, true);
+                auto move = algorithm.getBestMove(board.bitboard(), trainingData, true);
                 std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
-                board.makeMove(move, board.board());
+                 board.makeMove(move, board.bitboard());
                 algorithm.incrementMoveCount();
 
                 board.changeTurn();
@@ -255,7 +260,8 @@ namespace core
                 checkersThreadRunning = false;
             });
 
-            aiThread.detach(); 
+            if (aiThread.joinable())
+                aiThread.join(); 
         }
 
         /* if (board.getCurrentTurn())
@@ -547,10 +553,8 @@ namespace core
     {
         const uint32_t board_size = 8;
 
-        Board board{board_size};
-
-        BitBoard bitBoard;
-        Checkers checkers(bitBoard, 100.f);
+        BitBoard board;
+        Checkers checkers(board, 100.f);
 
         NETWORK::CheckersMinMax algorithm(20, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 

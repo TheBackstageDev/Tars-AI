@@ -35,7 +35,8 @@ namespace core
         void imguiNewFrame();
         void imguiEndFrame();
 
-        void runCheckers(Checkers& checkers, Board& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData);
+        void checkersBotSelectionMenu();
+        void runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData);
         void runPresentation();
         void runAITraining();
         void runMenu();
@@ -54,6 +55,7 @@ namespace core
         mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset{};
         std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
+        int32_t currentBotIndex = -1;
         std::vector<Bot> bots;
         std::thread* networkThread = nullptr;
 

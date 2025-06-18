@@ -10,16 +10,12 @@
 #include "ntars/base/data.hpp"
 #include "board.hpp"
 
-struct VectorHash
-{
-    std::size_t operator()(const std::vector<float>& vec) const
-    {
-        std::size_t hashValue = vec.size(); 
-        for (float v : vec)
-        {
-            hashValue ^= std::hash<float>()(v) + 0x9e3779b9 + (hashValue << 6) + (hashValue >> 2);
-        }
-        return hashValue;
+struct BoardHash {
+    std::size_t operator()(const BoardStruct& board) const {
+        return std::hash<uint64_t>()(board.occupiedBoard) ^
+               (std::hash<uint64_t>()(board.board_state[0]) << 1) ^
+               (std::hash<uint64_t>()(board.board_state[1]) << 2) ^
+               (std::hash<uint64_t>()(board.queenBoard) << 3);
     }
 };
 
@@ -28,7 +24,7 @@ namespace NETWORK
     class CheckersMinMax
     {
     public:
-        CheckersMinMax(uint32_t depth, Board& board);
+        CheckersMinMax(uint32_t depth, BitBoard& board);
 
         inline void setNewDepth(uint32_t depth) { this->depth = depth; }
         inline void incrementMoveCount() { moveNumber++; }
@@ -36,30 +32,30 @@ namespace NETWORK
         inline uint32_t getCheckedMoveCount() { return checkedMoves; }
         inline int32_t getCurrentBoardScore() { return boardScore; }
 
-        void sortMoves(std::vector<float>& board_state, std::vector<Move>& moves);
-        Move getBestMove(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max);
+        void sortMoves(BoardStruct& board_state, std::vector<BitMove>& moves);
+        BitMove getBestMove(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max);
     private:
 
-        std::pair<int32_t, Move> minimax(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData,
+        std::pair<int32_t, BitMove> minimax(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData,
              bool max = true, uint32_t currentDepth = 0, uint32_t maxDepth = 1, int32_t alpha = -std::numeric_limits<int32_t>::max(), int32_t beta = std::numeric_limits<int32_t>::max());
-        int32_t evaluatePosition(std::vector<float>& currentBoard, bool max);
+        int32_t evaluatePosition(BoardStruct& currentBoard, bool max);
         std::vector<float> getTrainingLabel(uint32_t moveIndex);
         
-        int32_t valueMove(std::vector<float>& board_state, const Move& move, const bool max);
+        int32_t valueMove(BoardStruct& board_state, const BitMove& move, const bool max);
   
-        bool isGameOver(std::vector<float>& board_state, bool max)
+        bool isGameOver(BoardStruct& board_state, bool max)
         {
             if (moveNumber <= 12) return false;
 
-            const std::vector<Move> possibleMoves = board.getMoves(max, board_state);
+            const std::vector<BitMove> possibleMoves = board.getMoves(board_state, max);
             return possibleMoves.size() == 0;
         }    
 
         // Searching Variables
-        std::unordered_map<std::vector<float>, std::pair<int32_t, int32_t>, VectorHash> permutations;
-        std::vector<Move> previousBestMoves;
+        std::unordered_map<BoardStruct, std::pair<int32_t, int32_t>, BoardHash> permutations;
+        std::vector<BitMove> previousBestMoves;
 
-        Board& board;
+        BitBoard& board;
 
         int32_t boardScore{0};
         uint32_t moveNumber{0};

@@ -7,7 +7,7 @@
 
 namespace NETWORK
 {
-    CheckersMinMax::CheckersMinMax(uint32_t depth, Board& board)
+    CheckersMinMax::CheckersMinMax(uint32_t depth, BitBoard& board)
         : depth(depth), board(board)
     {
     }
@@ -25,7 +25,7 @@ namespace NETWORK
         return emptyBoard;
     }
 
-    Move CheckersMinMax::getBestMove(std::vector<float>& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max)
+    BitMove CheckersMinMax::getBestMove(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max)
     {
         checkedMoves = 0;
 
@@ -38,27 +38,27 @@ namespace NETWORK
         return minimax(board_state, trainingData, max, 0, depth).second;
     }
 
-    std::pair<int32_t, Move> CheckersMinMax::minimax(
-        std::vector<float>& board_state, 
+    std::pair<int32_t, BitMove> CheckersMinMax::minimax(
+        BoardStruct& board_state, 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, 
         bool max, uint32_t currentDepth, uint32_t maxDepth, int32_t alpha, int32_t beta)
     {
         if (currentDepth == maxDepth)
-            return {evaluatePosition(board_state, max), Move()};
+            return {evaluatePosition(board_state, max), BitMove()};
 
         int32_t bestValue = max ? std::numeric_limits<int32_t>::min() : std::numeric_limits<int32_t>::max();
-        std::vector<Move> moves = board.getMoves(max, board_state);
+        std::vector<BitMove> moves = board.getMoves(board_state, max);
 
         if (moves.size() == 0)
-            return {bestValue, Move()};
+            return {bestValue, BitMove()};
 
-        Move chosenMove{};
+        BitMove chosenMove{};
         sortMoves(board_state, moves);
 
         bool _inserted{true};
-        for (Move& move : moves)
+        for (BitMove& move : moves)
         {
-            std::vector<float> tempBoard = board_state; 
+            BoardStruct tempBoard = board_state; 
             board.makeMove(move, tempBoard, true);
             checkedMoves++;
 
@@ -103,10 +103,10 @@ namespace NETWORK
         
         boardScore = bestValue;
 
-        if ((chosenMove.endPos != 0 || chosenMove.startPos != 0) && _inserted == true) {
+/*         if ((chosenMove.moveMask != 0 || chosenMove.indexMask != 0) && _inserted == true) {
             NTARS::DATA::TrainingData<std::vector<float>> moveData;
             moveData.data = board_state;
-            moveData.label = getTrainingLabel(chosenMove.endPos);
+            moveData.label = getTrainingLabel(chosenMove.moveMask);
 
             auto exists = std::find_if(trainingData.begin(), trainingData.end(), 
             [&](const NTARS::DATA::TrainingData<std::vector<float>>& existingData)
@@ -116,7 +116,7 @@ namespace NETWORK
 
             if (exists == trainingData.end())
                 trainingData.push_back(std::move(moveData));
-        }
+        } */
         
         return {bestValue, chosenMove};
     }
@@ -126,106 +126,95 @@ namespace NETWORK
     const uint32_t pieceValue = 6;          
     const uint32_t endGameCount = 8;       
 
-    int32_t CheckersMinMax::valueMove(std::vector<float>& board_state, const Move& move, bool max)
+    int32_t CheckersMinMax::valueMove(BoardStruct& board_state, const BitMove& move, bool max)
     {
         int32_t score = 0;
-        int32_t moveCaptureCount = move.middlePositions.size();
+        int32_t moveCaptureCount = __popcnt64(move.captureMask); 
 
         score += (max ? 1 : -1) * moveCaptureCount * captureMultiplier;
 
-        float pieceType = board_state[move.startPos];
-        bool promotesToQueen = (pieceType == (max ? 0.5f : -0.5f)) && (board.getY(move.endPos) == (max ? board.getSize() - 1 : 0));
-        
+        uint64_t promotionColumnMask = max ? 0x0101010101010101ULL : 0x8080808080808080ULL;
+        bool promotesToQueen = (move.moveMask & promotionColumnMask) && !(board_state.queenBoard & move.indexMask);
+
         if (promotesToQueen)
             score += (max ? 1 : -1) * queenValue * 2;
 
-        std::vector<Move> opponentMoves = board.getMoves(!max, board_state);
-        for (const Move& oppMove : opponentMoves)
-        {
-            if (oppMove.endPos == move.endPos)
-                score -= (max ? 1 : -1) * captureMultiplier;
+        uint64_t opponentAttackMask = 0;
+
+        std::vector<BitMove> oppMoves = board.getMoves(board_state, !max);
+        for (const BitMove& oppMove : oppMoves) {
+            opponentAttackMask |= oppMove.moveMask; 
         }
+
+        if (opponentAttackMask & move.moveMask)
+            score -= (max ? 1 : -1) * captureMultiplier;
 
         return score;
     }
 
-
-    void CheckersMinMax::sortMoves(std::vector<float>& board_state, std::vector<Move>& moves)
+    void CheckersMinMax::sortMoves(BoardStruct& board_state, std::vector<BitMove>& moves)
     {
-        std::sort(moves.begin(), moves.end(), [&](const Move& a, const Move& b) {
+        std::sort(moves.begin(), moves.end(), [&](const BitMove& a, const BitMove& b) {
             bool aWasBest = std::find(previousBestMoves.begin(), previousBestMoves.end(), a) != previousBestMoves.end();
             bool bWasBest = std::find(previousBestMoves.begin(), previousBestMoves.end(), b) != previousBestMoves.end();
 
             if (aWasBest != bWasBest)
-                return aWasBest;  
+                return aWasBest && !bWasBest; 
 
-            uint32_t scoreA = valueMove(board_state, a, board_state[a.startPos] > 0);
-            uint32_t scoreB = valueMove(board_state, b, board_state[b.startPos] > 0);
+            bool isMaxPieceA = (board_state.board_state[MAX] & a.indexMask) != 0;
+            bool isMaxPieceB = (board_state.board_state[MAX] & b.indexMask) != 0;
 
-            return scoreA > scoreB;
+            uint32_t scoreA = valueMove(board_state, a, isMaxPieceA);
+            uint32_t scoreB = valueMove(board_state, b, isMaxPieceB);
+
+            if (scoreA != scoreB)
+                return scoreA > scoreB;
+
+            return false; 
         });
     }
 
-    int32_t CheckersMinMax::evaluatePosition(std::vector<float>& board_state, bool max)
+    int32_t CheckersMinMax::evaluatePosition(BoardStruct& board_state, bool max)
     {
         if (isGameOver(board_state, !max))
             return max ? std::numeric_limits<int32_t>::max() : std::numeric_limits<int32_t>::min();
 
-        std::vector<Move> maxMoves = board.getMoves(true, board_state);
-        std::vector<Move> minMoves = board.getMoves(false, board_state);
-
         int32_t score = 0;
-        int32_t maxThreatenedPieces = 0, minThreatenedPieces = 0;
-        int32_t maxPieceCount = 0, minPieceCount = 0;
-        int32_t maxQueenCount = 0, minQueenCount = 0;
-        int32_t maxPotentialQueens = 0, minPotentialQueens = 0;
 
-        for (int32_t x = 0; x < board.getSize() * board.getSize(); ++x)
-        {
-            float piece = board_state[x];
-            if (piece == 0) continue;
+        int32_t maxPieceCount = __popcnt64(board_state.board_state[max]);
+        int32_t minPieceCount = __popcnt64(board_state.board_state[!max]);
 
-            bool isMaxPiece = (piece > 0);
-            bool isQueen = std::abs(piece) == 1;
-            bool isNearPromotion = (isMaxPiece && board.getY(x) >= board.getSize() - 2) || (!isMaxPiece && board.getY(x) <= 1);
-
-            int32_t pieceValueAdjusted = isQueen ? queenValue * 2 : pieceValue;
-            score += (isMaxPiece == max ? pieceValueAdjusted : -pieceValueAdjusted);
-            if (isNearPromotion) score += (isMaxPiece == max ? queenValue : -queenValue);
-
-            if (isMaxPiece) {
-                maxPieceCount++;
-                if (isQueen) maxQueenCount++;
-                if (isNearPromotion) maxPotentialQueens++;
-            } else {
-                minPieceCount++;
-                if (isQueen) minQueenCount++;
-                if (isNearPromotion) minPotentialQueens++;
-            }
-        }
+        int32_t maxQueenCount = __popcnt64(board_state.queenBoard & board_state.board_state[max]);
+        int32_t minQueenCount = __popcnt64(board_state.queenBoard & board_state.board_state[!max]);
 
         score += (maxPieceCount - minPieceCount) * pieceValue;
         score += (maxQueenCount - minQueenCount) * queenValue;
-        score += (maxMoves.size() - minMoves.size()) * pieceValue / 2; 
-        
-        for (const Move& move : maxMoves)
-        {
-            int32_t captureScore = move.middlePositions.size() * captureMultiplier;
 
+        uint64_t promotionMask = max ? 0x0101010101010101ULL : 0x8080808080808080ULL;
+        int32_t maxPotentialQueens = __popcnt64(board_state.board_state[max] & promotionMask);
+        int32_t minPotentialQueens = __popcnt64(board_state.board_state[!max] & promotionMask);
+
+        score += (maxPotentialQueens - minPotentialQueens) * queenValue;
+
+        std::vector<BitMove> maxMoves = board.getMoves(board_state, true);
+        std::vector<BitMove> minMoves = board.getMoves(board_state, false);
+
+        score += (maxMoves.size() - minMoves.size()) * (pieceValue / 2);
+
+        uint64_t opponentAttackMask = 0;
+        for (const BitMove& move : minMoves)
+            opponentAttackMask |= move.moveMask;
+
+        for (const BitMove& move : maxMoves)
+        {
+            int32_t captureScore = __popcnt64(move.captureMask) * captureMultiplier;
             if (move.flag == MoveFlag::MULTICAPTURE)
                 captureScore *= 1.2;
 
             score += captureScore;
-        }
 
-        for (const Move& move : minMoves)
-        {
-            int32_t captureScore = move.middlePositions.size() * captureMultiplier;
-
-            if (move.flag == MoveFlag::MULTICAPTURE)
-                captureScore *= 1.2;
-
-            score -= captureScore;
+            if (opponentAttackMask & move.moveMask)
+                score -= captureMultiplier;
         }
 
         int32_t remainingPieces = maxPieceCount + minPieceCount;
