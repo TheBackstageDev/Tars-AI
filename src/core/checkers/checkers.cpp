@@ -138,7 +138,7 @@ void Checkers::drawGameOverScreen()
 }
 
 void Checkers::drawBoard()
-{
+{ 
     BoardStruct& board_state = board.bitboard();
     uint32_t board_size = board.getSize();
     bool currentTurn = board.getCurrentTurn();
@@ -155,7 +155,7 @@ void Checkers::drawBoard()
     uint64_t moveMask = (1ULL << moveIndex);
     bool isMaxPiece = (board_state.board_state[MAX] & moveMask) != 0;
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && moveIndex != 0 && ((currentTurn && isMaxPiece) || (!currentTurn && !isMaxPiece)))
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && moveMask && ((currentTurn && isMaxPiece) || (!currentTurn && !isMaxPiece)))
     {
         currentSelectedPiece = moveIndex;
         movesPossibleCurrentPiece = board.getMovesForPiece((1ULL << currentSelectedPiece), board_state);

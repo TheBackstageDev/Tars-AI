@@ -47,50 +47,39 @@ struct BoardDistances
 {
     static constexpr std::array<uint8_t, 64> toTopEdge = [] {
         std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = i / 8;
+        for (int i = 0; i < 64; ++i) arr[i] = i / 8; // Distance to top edge
         return arr;
     }();
 
     static constexpr std::array<uint8_t, 64> toBottomEdge = [] {
         std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = 7 - (i / 8);
+        for (int i = 0; i < 64; ++i) arr[i] = 7 - (i / 8); // Distance to bottom edge
         return arr;
     }();
 
     static constexpr std::array<uint8_t, 64> toLeftEdge = [] {
         std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = i % 8;
+        for (int i = 0; i < 64; ++i) arr[i] = i % 8; // Distance to left edge
         return arr;
     }();
 
     static constexpr std::array<uint8_t, 64> toRightEdge = [] {
         std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = 7 - (i % 8);
+        for (int i = 0; i < 64; ++i) arr[i] = 7 - (i % 8); // Distance to right edge
         return arr;
     }();
+    
+    static constexpr std::array<std::array<uint8_t, 64>, 4> toDiagonalEdges = [] {
+        std::array<std::array<uint8_t, 64>, 4> arrs{};
 
-    static constexpr std::array<uint8_t, 64> toUpLeftEdge = [] {
-        std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = std::min(toTopEdge[i], toLeftEdge[i]);
-        return arr;
-    }();
+        for (int i = 0; i < 64; ++i) {
+            arrs[0][i] = std::min(BoardDistances::toTopEdge[i], BoardDistances::toLeftEdge[i]);  // Up-left (-9)
+            arrs[1][i] = std::min(BoardDistances::toTopEdge[i], BoardDistances::toRightEdge[i]); // Up-right (7)
+            arrs[2][i] = std::min(BoardDistances::toBottomEdge[i], BoardDistances::toLeftEdge[i]); // Down-left (-7)
+            arrs[3][i] = std::min(BoardDistances::toBottomEdge[i], BoardDistances::toRightEdge[i]); // Down-right (9)
+        }
 
-    static constexpr std::array<uint8_t, 64> toUpRightEdge = [] {
-        std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = std::min(toTopEdge[i], toRightEdge[i]);
-        return arr;
-    }();
-
-    static constexpr std::array<uint8_t, 64> toDownLeftEdge = [] {
-        std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = std::min(toBottomEdge[i], toLeftEdge[i]);
-        return arr;
-    }();
-
-    static constexpr std::array<uint8_t, 64> toDownRightEdge = [] {
-        std::array<uint8_t, 64> arr{};
-        for (int i = 0; i < 64; ++i) arr[i] = std::min(toBottomEdge[i], toRightEdge[i]);
-        return arr;
+        return arrs;
     }();
 };
 
