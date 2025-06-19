@@ -37,7 +37,7 @@ namespace NETWORK
     private:
 
         std::pair<int32_t, BitMove> minimax(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData,
-             bool max = true, uint32_t currentDepth = 0, uint32_t maxDepth = 1, int32_t alpha = -std::numeric_limits<int32_t>::max(), int32_t beta = std::numeric_limits<int32_t>::max());
+             bool max = true, uint32_t currentDepth = 0, uint32_t maxDepth = 1, int32_t alpha = std::numeric_limits<int32_t>::min(), int32_t beta = std::numeric_limits<int32_t>::max());
         int32_t evaluatePosition(BoardStruct& currentBoard, bool max);
         std::vector<float> getTrainingLabel(uint32_t moveIndex);
         

@@ -400,7 +400,7 @@ void BitBoard::checkMoves(const uint64_t index, bool max, std::vector<BitMove>& 
     {
         uint64_t moveMask = (d == 0 || d == 3) ? (index >> directions[d]) : (index << directions[d]);
 
-        if (!(moveMask & board.occupiedBoard)) 
+        if (!(moveMask & board.occupiedBoard) && moveMask)
             moves.emplace_back(index, moveMask, 0, MoveFlag::NONE);
     }
 
@@ -414,37 +414,44 @@ void BitBoard::checkMovesQueen(const uint64_t index, bool max, std::vector<BitMo
     unsigned long rawIndex;
     _BitScanForward64(&rawIndex, index);
 
-    auto& maxDistances = BoardDistances::toDiagonalEdges;
-
     for (int32_t d = 0; d < 4; ++d)
     {
-        uint8_t maxDistance = maxDistances[d][rawIndex];
-
         bool pieceFound = false; 
+        uint64_t current = index;
+        uint64_t jumpedPiece = 0;
 
-        for (int32_t step = 1; step <= maxDistance; ++step)
+        while (true)
         {
-            uint64_t moveMask = (d == 0 || d == 3) ? index >> (step * directions[d]) : index << (step * directions[d]);
+            uint64_t next = (d == 0 || d == 3) ? current >> directions[d] : current << directions[d];
+            if (!next) break;
 
-            if (!(board.occupiedBoard & moveMask) && !pieceFound)
+            if ((d == 0 || d == 2) && !(current & notAFile)) break;
+            if ((d == 1 || d == 3) && !(current & notHFile)) break;
+
+            if (!(board.occupiedBoard & next))
             {
-                moves.emplace_back(index, moveMask, 0, MoveFlag::NONE);
+                if (!pieceFound)
+                {
+                    moves.emplace_back(index, next, 0, MoveFlag::NONE);
+                    current = next;
+                }
+                else
+                {
+                    moves.emplace_back(index, next, jumpedPiece, MoveFlag::CAPTURE);
+                    checkCaptures(next, max, moves, board, index, jumpedPiece);
+                    break;
+                }
+            }
+            else if (!pieceFound && (next & board.board_state[!max]))
+            {
+                pieceFound = true;
+                jumpedPiece = next;
+                current = next;
             }
             else
             {
-                if (!pieceFound && (moveMask & board.board_state[!max])) 
-                {
-                    pieceFound = true;
-                    continue; 
-                }
-
-                if (pieceFound && !(board.occupiedBoard & moveMask)) 
-                {
-                    moves.emplace_back(index, moveMask, moveMask, MoveFlag::CAPTURE);
-                    checkCaptures(moveMask, max, moves, board);
-                }
-                break; 
-            }
+                break;
+            }      
         }
     }
 }
@@ -455,20 +462,15 @@ void BitBoard::checkCaptures(const uint64_t index, bool max, std::vector<BitMove
 
     int64_t originIndex = (origin == -1) ? index : origin;
 
-    uint64_t verticalMask = max ? (index & notRank1) << (BOARD_DIM * 2) : (index & notRank8) >> (BOARD_DIM * 2);
-    if (!verticalMask) return;
-
     for (int32_t i = 0; i < 4; ++i)
     {
         uint32_t d = directions[i];
 
-        if ((i == 0 || i == 2) && !(index & notAFile)) continue;
-        if ((i == 1 || i == 3) && !(index & notHFile)) continue;
-
         uint64_t jumpedPieceMask = (i > 1) ? index >> d : index << d;
         uint64_t landingMask  = (i > 1) ? index >> (d * 2) : index << (d * 2);
 
-        if (!landingMask) continue;
+        if (!landingMask || !jumpedPieceMask) continue;
+
         if (!(jumpedPieceMask & board.board_state[!max]) || (captureMask & jumpedPieceMask)) continue;
         if (landingMask & board.occupiedBoard) continue; // is alreadly occupied
 
