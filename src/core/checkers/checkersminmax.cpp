@@ -196,8 +196,8 @@ namespace NETWORK
         score += static_cast<int32_t>(maxMoves.size() - minMoves.size()) * (pieceValue / 3);
 
         // Potential king promotions
-        const uint64_t maxPromoMask = max ? 0x0101010101010101ULL : 0x8080808080808080ULL;
-        const uint64_t minPromoMask = max ? 0x8080808080808080ULL : 0x0101010101010101ULL;
+        const uint64_t maxPromoMask = max ? 0xFF00000000000000ULL : 0x00000000000000FFULL;
+        const uint64_t minPromoMask = max ? 0x00000000000000FFULL : 0xFF00000000000000ULL;
         const int32_t maxNearPromotion = __popcnt64(board_state.board_state[max] & maxPromoMask);
         const int32_t minNearPromotion = __popcnt64(board_state.board_state[!max] & minPromoMask);
         score += (maxNearPromotion - minNearPromotion) * (queenValue / 2);
