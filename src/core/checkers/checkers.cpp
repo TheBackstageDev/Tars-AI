@@ -174,16 +174,16 @@ void Checkers::drawBoard()
         }
     }
 
-    for (int x = 0; x < board_size; ++x)
+    for (int row = board_size - 1; row >= 0; --row)
     {
-        for (int y = 0; y < board_size; ++y)
+        for (int col = 0; col < board_size; ++col)
         { 
-            ImVec2 top_left = ImVec2(board_start.x + x * tile_size, board_start.y + y * tile_size);
+            ImVec2 top_left = ImVec2(board_start.x + row * tile_size, board_start.y + col * tile_size);
             ImVec2 bottom_right = ImVec2(top_left.x + tile_size, top_left.y + tile_size);
 
-            uint64_t pieceIndex = x * board_size + y;
+            uint64_t pieceIndex = col * board_size + row;
 
-            ImU32 color = ((x + y) % 2 == 0) ? BOARD_LIGHT : BOARD_DARK;
+            ImU32 color = ((row + col) % 2 == 0) ? BOARD_LIGHT : BOARD_DARK;
             ImVec2 center(top_left.x + tile_size / 2, top_left.y + tile_size / 2);
 
             if (pieceIndex == currentSelectedPiece)
@@ -196,13 +196,13 @@ void Checkers::drawBoard()
             {
                 for (const auto& move : movesPossibleCurrentPiece)
                     if (move.indexMask == (1ULL << pieceIndex) || move.moveMask == (1ULL << pieceIndex))
-                        color = ((x + y) % 2 == 0) ? BOARD_LIGHT * 2 : BOARD_DARK * 2;
+                        color = ((row + col) % 2 == 0) ? BOARD_LIGHT * 2 : BOARD_DARK * 2;
 
                 drawlist->AddRectFilled(top_left, bottom_right, color);
             }
 
-            ImVec2 text_pos = ImVec2(board_start.x + x * tile_size + (tile_size / 20), board_start.y + (y + 1) * tile_size - (tile_size / 4));
-            ImGui::GetWindowDrawList()->AddText(text_pos, ((x + y) % 2 == 0) ? BOARD_DARK : BOARD_LIGHT, getHouse(x, y).c_str());
+            ImVec2 text_pos = ImVec2(board_start.x + row * tile_size + (tile_size / 20), board_start.y + (col + 1) * tile_size - (tile_size / 4));
+            ImGui::GetWindowDrawList()->AddText(text_pos, ((row + col) % 2 == 0) ? BOARD_DARK : BOARD_LIGHT, getHouse(row, col).c_str());
         }
     }
 
@@ -216,10 +216,12 @@ void Checkers::drawBoard()
         const bool isMax = board_state.board_state[MAX] & currentIndex;
         ImU32 pieceColor = isMax ? PLR1_COLOR : PLR2_COLOR;
 
-        ImVec2 top_left = ImVec2(board_start.x + (i / board_size) * tile_size, board_start.y + (i % board_size) * tile_size);
+        int row = i / board_size;      // rank (Y)
+        int col = i % board_size;      // file (X)
+
+        ImVec2 top_left = ImVec2(board_start.x + col * tile_size, board_start.y + row * tile_size);
         ImVec2 bottom_right = ImVec2(top_left.x + tile_size, top_left.y + tile_size);
-        
-        ImVec2 center(top_left.x + tile_size / 2, top_left.y + tile_size / 2);
+        ImVec2 center = ImVec2(top_left.x + tile_size / 2, top_left.y + tile_size / 2);
 
         if (i == currentSelectedPiece) {
             selectedCenter = center;

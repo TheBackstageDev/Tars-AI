@@ -154,6 +154,14 @@ private:
     std::vector<float> board_state;
 };
 
+struct BitDirection
+{
+    uint64_t offset;
+    bool downwards;
+
+    constexpr BitDirection(uint64_t o, bool d) noexcept : offset(o), downwards(d) {}
+};
+
 struct BitMove
 {
     uint64_t indexMask;
@@ -162,9 +170,12 @@ struct BitMove
 
     MoveFlag flag{MoveFlag::NONE};
 
-    static constexpr std::array<uint32_t, 4> getMoveOffsets()
+    static constexpr std::array<BitDirection, 4> getMoveOffsets()
     {
-        return {9, 7, 9, 7}; // double for the queen moves
+        return {BitDirection{9, false},   // UP_LEFT (<<)
+                BitDirection{7, false},   // UP_RIGHT (<<)
+                BitDirection{7, true},    // DOWN_LEFT (>>)
+                BitDirection{9, true}};   // DOWN_RIGHT (>>)
     }
 
     constexpr bool operator==(const BitMove& other) const
@@ -214,6 +225,7 @@ public:
 private:
     void initiateBoard();
 
+    void checkDirectionsEnabled(const uint64_t index, std::vector<BitDirection>& directions);
     void checkMoves(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board);
     void checkMovesQueen(const uint64_t index, bool max, std::vector<BitMove>& moves, BoardStruct& board);
 

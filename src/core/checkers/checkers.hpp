@@ -40,7 +40,7 @@ public:
         uint32_t x = (mousePos.x - boardStart.x) / tile_size;
         uint32_t y = (mousePos.y - boardStart.y) / tile_size;
 
-        return x * board.getSize() + y;
+        return y * board.getSize() + x;
     }
 private:
     void drawGameOverScreen();

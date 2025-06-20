@@ -181,47 +181,54 @@ namespace NETWORK
 
         int32_t score = 0;
 
-        int32_t maxPieceCount = __popcnt64(board_state.board_state[max]);
-        int32_t minPieceCount = __popcnt64(board_state.board_state[!max]);
+        // Material evaluation
+        const int32_t maxMen = __popcnt64(board_state.board_state[max] & ~board_state.queenBoard);
+        const int32_t minMen = __popcnt64(board_state.board_state[!max] & ~board_state.queenBoard);
+        const int32_t maxQueens = __popcnt64(board_state.board_state[max] & board_state.queenBoard);
+        const int32_t minQueens = __popcnt64(board_state.board_state[!max] & board_state.queenBoard);
 
-        int32_t maxQueenCount = __popcnt64(board_state.queenBoard & board_state.board_state[max]);
-        int32_t minQueenCount = __popcnt64(board_state.queenBoard & board_state.board_state[!max]);
+        score += (maxMen - minMen) * pieceValue;
+        score += (maxQueens - minQueens) * queenValue;
 
-        score += (maxPieceCount - minPieceCount) * pieceValue;
-        score += (maxQueenCount - minQueenCount) * queenValue;
-
-        uint64_t promotionMask = max ? 0x0101010101010101ULL : 0x8080808080808080ULL;
-        int32_t maxPotentialQueens = __popcnt64(board_state.board_state[max] & promotionMask);
-        int32_t minPotentialQueens = __popcnt64(board_state.board_state[!max] & promotionMask);
-
-        score += (maxPotentialQueens - minPotentialQueens) * queenValue;
-
+        // Mobility
         std::vector<BitMove> maxMoves = board.getMoves(board_state, true);
         std::vector<BitMove> minMoves = board.getMoves(board_state, false);
+        score += static_cast<int32_t>(maxMoves.size() - minMoves.size()) * (pieceValue / 3);
 
-        score += (maxMoves.size() - minMoves.size()) * (pieceValue / 2);
+        // Potential king promotions
+        const uint64_t maxPromoMask = max ? 0x0101010101010101ULL : 0x8080808080808080ULL;
+        const uint64_t minPromoMask = max ? 0x8080808080808080ULL : 0x0101010101010101ULL;
+        const int32_t maxNearPromotion = __popcnt64(board_state.board_state[max] & maxPromoMask);
+        const int32_t minNearPromotion = __popcnt64(board_state.board_state[!max] & minPromoMask);
+        score += (maxNearPromotion - minNearPromotion) * (queenValue / 2);
 
-        uint64_t opponentAttackMask = 0;
+        // Threats and captures
+        uint64_t opponentAttackSquares = 0;
         for (const BitMove& move : minMoves)
-            opponentAttackMask |= move.moveMask;
+            opponentAttackSquares |= move.moveMask;
 
         for (const BitMove& move : maxMoves)
         {
-            int32_t captureScore = __popcnt64(move.captureMask) * captureMultiplier;
-            if (move.flag == MoveFlag::MULTICAPTURE)
-                captureScore *= 1.2;
+            if (move.flag == MoveFlag::CAPTURE || move.flag == MoveFlag::MULTICAPTURE)
+            {
+                int32_t captured = __popcnt64(move.captureMask);
+                score += captured * captureMultiplier;
 
-            score += captureScore;
+                if (move.flag == MoveFlag::MULTICAPTURE)
+                    score += static_cast<int32_t>(captured * 0.2f * captureMultiplier);
+            }
 
-            if (opponentAttackMask & move.moveMask)
-                score -= captureMultiplier;
+            // Penalize risky squares
+            if (opponentAttackSquares & move.moveMask)
+                score -= pieceValue / 2;
         }
 
-        int32_t remainingPieces = maxPieceCount + minPieceCount;
-        if (remainingPieces <= endGameCount)
+        // Endgame heuristics
+        const int32_t totalPieces = maxMen + minMen + maxQueens + minQueens;
+        if (totalPieces <= endGameCount)
         {
-            score += (max ? queenValue : -queenValue) * (maxMoves.size() < 5);
-            score += (max ? pieceValue : -pieceValue) * !(maxMoves.size() < 5);
+            const bool lowMobility = maxMoves.size() < 4;
+            score += (max ? 1 : -1) * (lowMobility ? -queenValue : queenValue / 2);
         }
 
         return score;
