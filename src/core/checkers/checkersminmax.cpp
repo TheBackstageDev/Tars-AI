@@ -17,10 +17,14 @@ namespace NETWORK
         return sqrtf(powf(x1.x - x0.x, 2) + powf(x1.y - x0.y, 2));
     }
 
-    std::vector<float> CheckersMinMax::getTrainingLabel(uint32_t moveIndex)
+    std::vector<float> CheckersMinMax::getTrainingLabel(uint64_t moveIndex)
     {
         std::vector<float> emptyBoard(board.getSize() * board.getSize(), 0);
-        emptyBoard[moveIndex] = 1.0;
+
+        unsigned long rawIndex;
+        _BitScanForward64(&rawIndex, moveIndex);
+
+        emptyBoard[rawIndex] = 1.0;
 
         return emptyBoard;
     }
@@ -103,9 +107,9 @@ namespace NETWORK
         
         boardScore = bestValue;
 
-/*         if ((chosenMove.moveMask != 0 || chosenMove.indexMask != 0) && _inserted == true) {
+        if ((chosenMove.moveMask != 0 || chosenMove.indexMask != 0) && _inserted == true) {
             NTARS::DATA::TrainingData<std::vector<float>> moveData;
-            moveData.data = board_state;
+            moveData.data = board.vectorBoard(board_state);
             moveData.label = getTrainingLabel(chosenMove.moveMask);
 
             auto exists = std::find_if(trainingData.begin(), trainingData.end(), 
@@ -116,7 +120,7 @@ namespace NETWORK
 
             if (exists == trainingData.end())
                 trainingData.push_back(std::move(moveData));
-        } */
+        }
         
         return {bestValue, chosenMove};
     }

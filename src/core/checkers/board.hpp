@@ -213,6 +213,7 @@ public:
     std::vector<BitMove> getMovesForPiece(const uint64_t index, BoardStruct& board);
 
     inline BoardStruct& bitboard() { return board; }
+    std::vector<float> vectorBoard(BoardStruct& board);
     inline void changeTurn() { currentTurn = !currentTurn; }
 
     inline uint32_t getSize() { return 8; }

@@ -42,6 +42,8 @@ public:
 
         return y * board.getSize() + x;
     }
+
+    inline void setNewTileSize(float newSize) { tile_size = newSize; }
 private:
     void drawGameOverScreen();
 

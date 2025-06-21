@@ -50,39 +50,42 @@ std::vector<BitMove> movesPossibleCurrentPiece{};
 
 void Checkers::handleNetworkAction(std::vector<float>& activations, NETWORK::CheckersMinMax& algorithm)
 {
-/*     BoardStruct& board_state = board.bitboard();
+    BoardStruct& board_state = board.bitboard();
     std::vector<BitMove> currentMoves = board.getMoves(board_state, true);
     BitMove selectedMove{0, 0};
 
-    std::vector<uint32_t> sortedIndices(board.getSize() * board.getSize());
-    std::iota(sortedIndices.begin(), sortedIndices.end(), 0);
-    std::sort(sortedIndices.begin(), sortedIndices.end(), [&](uint32_t a, uint32_t b) {
-        return activations[a] > activations[b]; 
+    std::vector<int> sortedBits(64);
+    std::iota(sortedBits.begin(), sortedBits.end(), 0);
+
+    std::sort(sortedBits.begin(), sortedBits.end(), [&](int a, int b) {
+        return activations[a] > activations[b];
     });
 
-    for (uint32_t choice : sortedIndices)
+    for (int bit : sortedBits)
     {
+        uint64_t targetSquare = 1ULL << bit;
+
         std::vector<BitMove> candidateMoves;
+        std::copy_if(currentMoves.begin(), currentMoves.end(), std::back_inserter(candidateMoves),
+            [&](const BitMove& move) {
+                return move.moveMask == targetSquare;
+            });
 
-        std::copy_if(currentMoves.begin(), currentMoves.end(), std::back_inserter(candidateMoves), [&](const BitMove& move){
-            return move.moveMask == choice;
-        });
-
-        if (!candidateMoves.empty()) // Found at least one move
+        if (!candidateMoves.empty())
         {
             algorithm.sortMoves(board_state, candidateMoves);
             selectedMove = candidateMoves.front();
-            break; 
+            break;
         }
 
-        activations[choice] = 0.0f; 
+        activations[bit] = 0.0f; 
     }
 
-    if (selectedMove.indexMask == 0 && selectedMove. == 0)
+    if (selectedMove.indexMask == 0 && selectedMove.moveMask == 0)
         return;
 
     board.makeMove(selectedMove, board_state);
-    board.changeTurn(); */
+    board.changeTurn();
 }
 
 void Checkers::handleAction(uint64_t pieceIndex, uint64_t moveIndex)
@@ -320,7 +323,7 @@ void Checkers::incrementLeaderboard(const std::string name)
 
 void Checkers::drawInfo(int32_t boardScore, Bot& bot)
 {
-    ImGui::Begin("Info");
+    ImGui::Begin("Info##2");
         const char* difficulties[] = { "Easy", "Medium", "Hard" };
 
         ImGui::BeginChild("##Options");

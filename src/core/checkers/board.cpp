@@ -305,10 +305,6 @@ void BitBoard::initiateBoard()
 
 const uint64_t notAFile = 0xFEFEFEFEFEFEFEFEULL; 
 const uint64_t notHFile = 0x7F7F7F7F7F7F7F7FULL; 
-const uint64_t notBFile = 0xFDFDFDFDFDFDFDFDULL; 
-const uint64_t notGFile = 0xBFBFBFBFBFBFBFBFULL; 
-const uint64_t notRank1 = 0xFFFFFFFFFFFFFF00ULL;
-const uint64_t notRank8 = 0x00FFFFFFFFFFFFFFULL;
 
 uint64_t soutOne (uint64_t b) {return  b >> 8;}
 uint64_t nortOne (uint64_t b) {return  b << 8;}
@@ -316,7 +312,9 @@ uint64_t nortOne (uint64_t b) {return  b << 8;}
 void BitBoard::makeMove(const BitMove& move, BoardStruct& board, bool isMinimax)
 {
     bool max = move.indexMask & board.board_state[MAX];
-    const uint64_t promotionRankMask = max ? 0xFF00000000000000ULL : 0x00000000000000FFULL;
+    const uint64_t promotionRankMask = !max
+        ? 0x00000000000000FFULL  // MIN promotes on rank 1 (bits 0–7)
+        : 0xFF00000000000000ULL; // MAX promotes on rank 8 (bits 56–63)
 
     uint64_t& opponentMask = board.board_state[!max];
     uint64_t& currentMask = board.board_state[max];
@@ -324,7 +322,7 @@ void BitBoard::makeMove(const BitMove& move, BoardStruct& board, bool isMinimax)
     opponentMask &= ~(move.captureMask);
     currentMask = (currentMask & ~move.indexMask) | move.moveMask;
 
-    if (move.indexMask & board.queenBoard) // is a queen, update
+    if (move.indexMask & board.queenBoard) 
         board.queenBoard = (board.queenBoard & ~move.indexMask) | move.moveMask;
 
     if (move.moveMask & promotionRankMask)
@@ -344,6 +342,28 @@ void BitBoard::makeMove(const BitMove& move, BoardStruct& board, bool isMinimax)
         }
     }
 }
+
+std::vector<float> BitBoard::vectorBoard(BoardStruct& board)
+{
+    std::vector<float> vec(64, 0.0f); 
+
+    for (int i = 0; i < 64; ++i)
+    {
+        uint64_t bit = 1ULL << i;
+
+        bool isMax = board.board_state[1] & bit;
+        bool isMin = board.board_state[0] & bit;
+        bool isQueen = board.queenBoard & bit;
+
+        if (isMax)
+            vec[i] = isQueen ? 1.0f : 0.5f;
+        else if (isMin)
+            vec[i] = isQueen ? -1.0f : -0.5f;
+    }
+
+    return vec;
+}
+
 
 std::vector<uint64_t> BitBoard::getPieceIndices(BoardStruct& board, bool max)
 {
@@ -442,8 +462,8 @@ void BitBoard::checkMovesQueen(const uint64_t index, bool max, std::vector<BitMo
             uint64_t next = d.downwards ? current >> d.offset : current << d.offset;
             if (!next) break;
 
-            int nextFile = getFileIndex(current);
-            int currentFile = getFileIndex(next);
+            int32_t nextFile = getFileIndex(current);
+            int32_t currentFile = getFileIndex(next);
 
             if (std::abs(currentFile - nextFile) != 1)
                 break; 
@@ -460,8 +480,8 @@ void BitBoard::checkMovesQueen(const uint64_t index, bool max, std::vector<BitMo
                     if (!jumpedPiece)
                         break;
 
-                    int jumpedFile = getFileIndex(jumpedPiece);
-                    int landingFile = getFileIndex(next);
+                    int32_t jumpedFile = getFileIndex(jumpedPiece);
+                    int32_t landingFile = getFileIndex(next);
 
                     if (std::abs(jumpedFile - landingFile) != 1)
                         break; 
@@ -473,8 +493,8 @@ void BitBoard::checkMovesQueen(const uint64_t index, bool max, std::vector<BitMo
             }
             else if (!pieceFound && (next & board.board_state[!max]))
             {
-                int currentFile = getFileIndex(current);
-                int jumpedFile  = getFileIndex(next);
+                int32_t currentFile = getFileIndex(current);
+                int32_t jumpedFile  = getFileIndex(next);
 
                 if (std::abs(currentFile - jumpedFile) != 1)
                     break;

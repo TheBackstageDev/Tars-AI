@@ -57,6 +57,7 @@ public:
     inline std::string getName() { return info.name; }
     inline uint32_t getCurrentSpeech() { return info.currentSpeech; }
     inline float getBlunderChance() { return info.blunderChance; }
+    inline std::unique_ptr<gl::GLTexture>& getImage() { return image; }
 
     void chooseSpeech(SpeechType type);
     void handleSpeech(int32_t boardScore);

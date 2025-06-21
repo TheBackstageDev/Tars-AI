@@ -212,11 +212,11 @@ namespace core
 
     void application::initBots()
     {
-        BotInfo testBot;
-        testBot.name = "Terminator";
-        testBot.blunderChance = 0.2f; 
-
-        testBot.speeches = {
+        // Terminator
+        BotInfo terminator;
+        terminator.name = "Terminator";
+        terminator.blunderChance = 0.2f;
+        terminator.speeches = {
             { "Processing... Continue gameplay.", "neutral", SpeechType::Neutral },
             { "Target acquired. Eliminated.", "capture", SpeechType::Capture },
             { "Multiple threats neutralized. You cannot resist.", "multi_capture", SpeechType::MultiCapture },
@@ -228,14 +228,144 @@ namespace core
             { "Continue. Your survival rate remains low.", "encouragement", SpeechType::Encouragement },
             { "Unexpected. You are adapting. That is… interesting.", "surprise", SpeechType::Surprise }
         };
+        bots.emplace_back(Bot(terminator, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
 
-        bots.emplace_back(Bot(testBot, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+        // GlitchBot
+        BotInfo glitch;
+        glitch.name = "GlitchBot";
+        glitch.blunderChance = 0.35f;
+        glitch.speeches = {
+            { "Uhh... Move? Maybe? Okay go!", "neutral", SpeechType::Neutral },
+            { "Whoa! That actually worked?!", "capture", SpeechType::Capture },
+            { "Double kill! Pure chaos.", "multi_capture", SpeechType::MultiCapture },
+            { "Heh, total accident. I'll take it.", "good_move", SpeechType::GoodMove },
+            { "Oops. Lag... right?", "bad_move", SpeechType::BadMove },
+            { "I win! Wait... that was supposed to happen?", "win", SpeechType::Win },
+            { "404: Skill not found.", "lose", SpeechType::Lose },
+            { "Gotta admit, that was kinda slick.", "taunt", SpeechType::Taunt },
+            { "You might actually pull this off. Weird.", "encouragement", SpeechType::Encouragement },
+            { "Unexpected move. Processing glitch...", "surprise", SpeechType::Surprise }
+        };
+        bots.emplace_back(Bot(glitch, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+
+        // Strategos
+        BotInfo strategos;
+        strategos.name = "Strategos";
+        strategos.blunderChance = 0.05f;
+        strategos.speeches = {
+            { "The board is set. Your move.", "neutral", SpeechType::Neutral },
+            { "Sacrifices are inevitable.", "capture", SpeechType::Capture },
+            { "A calculated strike across the ranks.", "multi_capture", SpeechType::MultiCapture },
+            { "Elegant play. But the war isn't over.", "good_move", SpeechType::GoodMove },
+            { "Flawed tactics. You will regret that.", "bad_move", SpeechType::BadMove },
+            { "Victory, as predicted.", "win", SpeechType::Win },
+            { "Impressive. That deviation was not forecasted.", "lose", SpeechType::Lose },
+            { "I anticipated your ambition. It will cost you.", "taunt", SpeechType::Taunt },
+            { "Adaptation is a sign of strength. Continue.", "encouragement", SpeechType::Encouragement },
+            { "Ah... you've shifted your tempo. Noted.", "surprise", SpeechType::Surprise }
+        };
+        bots.emplace_back(Bot(strategos, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+
+        // Echo
+        BotInfo echo;
+        echo.name = "Echo";
+        echo.blunderChance = 0.15f;
+        echo.speeches = {
+            { "Your turn. Lets play clean.", "neutral", SpeechType::Neutral },
+            { "Bait taken. Nicely sprung.", "capture", SpeechType::Capture },
+            { "That was surgical. Respect.", "multi_capture", SpeechType::MultiCapture },
+            { "You surprise me sometimes.", "good_move", SpeechType::GoodMove },
+            { "Let that one slip. My bad.", "bad_move", SpeechType::BadMove },
+            { "See you on the next board.", "win", SpeechType::Win },
+            { "One loss doesnt mean defeat.", "lose", SpeechType::Lose },
+            { "Cocky much? Lets see you back it up.", "taunt", SpeechType::Taunt },
+            { "Keep going. You've got something here.", "encouragement", SpeechType::Encouragement },
+            { "Bold move. Didn't expect that line.", "surprise", SpeechType::Surprise }
+        };
+        bots.emplace_back(Bot(echo, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+
+        BotInfo netrix;
+        netrix.name = "Netrix"; // short for Neural Execution Terminal Replica Interface eXperiment
+        netrix.blunderChance = 0.1f;
+
+        netrix.speeches = {
+            { "BEEP. BOOP. Ready to calculate.", "neutral", SpeechType::Neutral },
+            { "Tactical pattern recognized. Executing response.", "capture", SpeechType::Capture },
+            { "THREE MOVES. ONE DESTINY. BZZZ!", "multi_capture", SpeechType::MultiCapture },
+            { "Hmm. That move has a 73%' admiration score.", "good_move", SpeechType::GoodMove },
+            { "Error: Human move not found in database. Likely suboptimal.", "bad_move", SpeechType::BadMove },
+            { "Evaluation complete. Victory assured. Shutting down ego.", "win", SpeechType::Win },
+            { "LOSS detected. Adjusting neural weights... internally sobbing.", "lose", SpeechType::Lose },
+            { "You think you've outsmarted me? Cute.", "taunt", SpeechType::Taunt },
+            { "Maintain momentum. Performance graph trending upward.", "encouragement", SpeechType::Encouragement },
+            { "Surprise spike in your move complexity. Impressed. Slightly.", "surprise", SpeechType::Surprise }
+        };
+
+        bots.emplace_back(Bot(netrix, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+    }
+
+    void renderBotSelection(Bot& bot, int selectedBotIndex, int botIndex, std::function<void(int)> onSelect)
+    {
+        const std::string label = bot.getName();
+        const bool isSelected = (selectedBotIndex == botIndex);
+
+        ImGui::BeginChild(label.c_str(), ImVec2(180, 250), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+
+        if (isSelected)
+        {
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_FrameBgActive));
+            ImVec2 winPos = ImGui::GetWindowPos();
+            ImVec2 winSize = ImGui::GetWindowSize();
+            ImVec2 winEnd = ImVec2(winPos.x + winSize.x, winPos.y + winSize.y);
+            ImGui::GetWindowDrawList()->AddRect(
+                winPos, winEnd,
+                ImGui::GetColorU32(ImGuiCol_ButtonHovered), 5.0f, 0, 2.5f);
+        }
+
+        // Bot Image
+        ImGui::Dummy(ImVec2(0, 5));
+        ImGui::SetCursorPosX((180 - 130) * 0.5f);
+        ImGui::Image(bot.getImage()->getId(), ImVec2(130, 130));
+
+        // Bot Name
+        ImGui::Dummy(ImVec2(0, 8));
+        ImGui::SetCursorPosX((180 - ImGui::CalcTextSize(label.c_str()).x) * 0.5f);
+        ImGui::Text("%s", label.c_str());
+
+        // Select Button
+        ImGui::Dummy(ImVec2(0, 8));
+        ImGui::SetCursorPosX((180 - 100) * 0.5f);
+        if (ImGui::Button(("Choose##" + label).c_str(), ImVec2(100, 28)))
+        {
+            onSelect(botIndex);
+        }
+
+        if (isSelected) ImGui::PopStyleColor();
+
+        ImGui::EndChild();
     }
 
     void application::checkersBotSelectionMenu()
     {
+        ImGui::Begin("Bot Selection Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
+        for (size_t i = 0; i < bots.size(); ++i)
+        {
+            renderBotSelection(bots[i], currentBotIndex, static_cast<int>(i), [&](int newIndex) {
+                currentBotIndex = newIndex;
+            });
+            ImGui::SameLine();
+        }
+
+        if (ImGui::Button("Enter Checkers Game", ImVec2(100, 20)))
+        {
+            part = CurrentPart::CHECKERS;
+        }
+
+        ImGui::End();
     }
+
+    float tileSize = 100.f;
 
     void application::runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
@@ -249,7 +379,7 @@ namespace core
                 auto move = algorithm.getBestMove(board.bitboard(), trainingData, true);
                 std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
-                 board.makeMove(move, board.bitboard());
+                board.makeMove(move, board.bitboard());
                 algorithm.incrementMoveCount();
 
                 board.changeTurn();
@@ -267,7 +397,7 @@ namespace core
         /* if (board.getCurrentTurn())
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-            auto activations = network.run(board.board());
+            auto activations = network.run(board.vectorBoard(board.bitboard()));
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
             std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() << " ns" << std::endl;
@@ -278,13 +408,18 @@ namespace core
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
         checkers.drawBoard();
-        checkers.drawInfo(algorithm.getCurrentBoardScore(), bots.at(0));
+        checkers.drawInfo(algorithm.getCurrentBoardScore(), bots.at(currentBotIndex));
 
         ImGui::Begin("Extra Info", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
         ImGui::Text("Current Turn: %s", board.getCurrentTurn() == false ? "player" : "bot");
         ImGui::Text("Board Evaluation: %2.f", static_cast<float>(algorithm.getCurrentBoardScore()));
         
+        if (ImGui::SliderFloat("Board Size", &tileSize, 50.f, 200.f))
+        {
+            checkers.setNewTileSize(tileSize);
+        }
+
         if (ImGui::Button("Exit To Menu", ImVec2(300, 50)))
         {
             part = CurrentPart::MENU;
@@ -535,7 +670,7 @@ namespace core
         ImGui::SetCursorPos(ImVec2(buttonX, ImGui::GetCursorPosY())); 
         if (ImGui::Button("CHECKERS", buttonSize))
         {
-            part = CurrentPart::CHECKERS;
+            part = CurrentPart::CHECKERS_SELECTION_MENU;
         }
 
         ImGui::Dummy(ImVec2(0.0f, buttonSpacing));
@@ -576,6 +711,11 @@ namespace core
                 case CurrentPart::PRESENTATION:
                 {
                     runPresentation();
+                    break;
+                }
+                case CurrentPart::CHECKERS_SELECTION_MENU:
+                {
+                    checkersBotSelectionMenu();
                     break;
                 }
                 case CurrentPart::CHECKERS:

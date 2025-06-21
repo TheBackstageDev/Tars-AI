@@ -18,6 +18,7 @@ namespace core
     enum class CurrentPart
     {
         MENU,
+        CHECKERS_SELECTION_MENU,
         CHECKERS,
         PRESENTATION,
         AIPRESENTATION
