@@ -36,7 +36,7 @@ namespace core
         void imguiNewFrame();
         void imguiEndFrame();
 
-        void checkersBotSelectionMenu();
+        void checkersBotSelectionMenu(BitBoard& board);
         void runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData);
         void runPresentation();
         void runAITraining();

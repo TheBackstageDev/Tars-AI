@@ -108,7 +108,7 @@ void Checkers::handleAction(uint64_t pieceIndex, uint64_t moveIndex)
 
 char winner[128] = "";
 
-void Checkers::drawGameOverScreen()
+void Checkers::drawGameOverScreen(Bot& bot)
 {
     if (board.isGameOver(board.getCurrentTurn(), board.bitboard()) || board.isGameOver(!board.getCurrentTurn(), board.bitboard())) 
     {
@@ -118,13 +118,13 @@ void Checkers::drawGameOverScreen()
 
         if (ImGui::BeginPopupModal("Game Over", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            std::string winnerText = (board.getCurrentTurn() == false) ? "Bot Wins!" : "Player Wins!";
+            std::string winnerText = (board.getCurrentTurn() == false) ? bot.getName() + "Wins!" : "Player Wins!";
             ImGui::TextColored(ImVec4(255, 215, 0, 255), "%s", winnerText.c_str()); 
 
             ImGui::Text("Please insert the name of the Winner!");
             if (ImGui::InputText("Winner name...", winner, 128 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
             {
-                incrementLeaderboard(std::string(winner));
+                incrementLeaderboard(std::string(winner), bot);
             }
 
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 50, 50, 255)); 
@@ -140,8 +140,13 @@ void Checkers::drawGameOverScreen()
     }
 }
 
-void Checkers::drawBoard()
+void Checkers::drawBoard(Bot& bot)
 { 
+    if (leaderboard.find(bot.getName()) == leaderboard.end())
+    {
+        leaderboard.try_emplace(bot.getName());
+    }
+
     BoardStruct& board_state = board.bitboard();
     uint32_t board_size = board.getSize();
     bool currentTurn = board.getCurrentTurn();
@@ -243,18 +248,17 @@ void Checkers::drawBoard()
 
     ImGui::End();
 
-    drawGameOverScreen();
+    drawGameOverScreen(bot);
 }
 
-void Checkers::drawLeaderboard()
+void Checkers::drawLeaderboard(Bot& bot)
 {
-    const auto& leaders = leaderboard[selectedDifficulty];
+    const auto& leaders = leaderboard.at(bot.getName());
 
     ImGui::Begin("Leaderboard");
         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]); 
-        const char* difficultyStr = selectedDifficulty == Difficulty::Easy ? "Easy" : 
-                                selectedDifficulty == Difficulty::Medium ? "Medium" : "Hard";
-        ImGui::TextColored(ImVec4(1.0f, 0.843f, 0.0f, 1.0f), "%s Difficulty Leaderboard", difficultyStr);
+
+        ImGui::TextColored(ImVec4(1.0f, 0.843f, 0.0f, 1.0f), "%s Difficulty Leaderboard", bot.getName().c_str());
         ImGui::PopFont();
         ImGui::Separator();
 
@@ -303,9 +307,9 @@ void Checkers::drawLeaderboard()
     ImGui::End();
 }
 
-void Checkers::incrementLeaderboard(const std::string name)
+void Checkers::incrementLeaderboard(const std::string name, Bot& bot)
 {
-    auto& leaders = leaderboard[selectedDifficulty];
+    auto& leaders = leaderboard[bot.getName()];
     auto it = std::find_if(leaders.begin(), leaders.end(), [&](const auto& entry) {
         return entry.first == name;
     });
@@ -323,19 +327,7 @@ void Checkers::incrementLeaderboard(const std::string name)
 
 void Checkers::drawInfo(int32_t boardScore, Bot& bot)
 {
-    ImGui::Begin("Info##2");
-        const char* difficulties[] = { "Easy", "Medium", "Hard" };
-
-        ImGui::BeginChild("##Options");
-            ImGui::Text("Select Difficulty:");
-            int difficultyIndex = static_cast<int>(selectedDifficulty);
-            if (ImGui::Combo("##DifficultyCombo", &difficultyIndex, difficulties, IM_ARRAYSIZE(difficulties))) {
-                selectedDifficulty = static_cast<Difficulty>(difficultyIndex);
-            }
-        ImGui::EndChild();
-        drawLeaderboard();
-    ImGui::End();
-
+    drawLeaderboard(bot);
     bot.drawBot(true);
 }
 

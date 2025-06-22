@@ -11,19 +11,12 @@
 #include <vector>
 #include <map>
 
-enum Difficulty
-{
-    Easy,
-    Medium,
-    Hard
-};
-
 class Checkers 
 {
 public:
     Checkers(BitBoard& board, const float tile_size);
 
-    void drawBoard();
+    void drawBoard(Bot& bot);
     void drawInfo(int32_t boardScore, Bot& bot);
 
     void handleNetworkAction(std::vector<float>& activations, NETWORK::CheckersMinMax& algorithm);
@@ -45,20 +38,18 @@ public:
 
     inline void setNewTileSize(float newSize) { tile_size = newSize; }
 private:
-    void drawGameOverScreen();
+    void drawGameOverScreen(Bot& bot);
 
     void drawPiece(ImDrawList* drawlist, const ImU32 color, ImVec2 center, const uint32_t id);
     void drawCrown(ImDrawList* drawlist, ImVec2 center);
 
-    void drawLeaderboard();
-    void incrementLeaderboard(const std::string name);
+    void drawLeaderboard(Bot& bot);
+    void incrementLeaderboard(const std::string name, Bot& bot);
 
     BitBoard& board;
 
-    Difficulty selectedDifficulty{Difficulty::Easy};
-
     // 3 leaderboards for 3 different difficulties
-    std::array<std::vector<std::pair<std::string, int32_t>>, 3> leaderboard;
+    std::unordered_map<std::string, std::vector<std::pair<std::string, int32_t>>> leaderboard;
 
     float tile_size{0};
     const float margin = 20.f;

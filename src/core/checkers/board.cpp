@@ -313,23 +313,26 @@ void BitBoard::makeMove(const BitMove& move, BoardStruct& board, bool isMinimax)
 {
     bool max = move.indexMask & board.board_state[MAX];
     const uint64_t promotionRankMask = !max
-        ? 0x00000000000000FFULL  // MIN promotes on rank 1 (bits 0–7)
-        : 0xFF00000000000000ULL; // MAX promotes on rank 8 (bits 56–63)
+        ? 0x00000000000000FFULL  // MIN promotes on rank 1 (bottom)
+        : 0xFF00000000000000ULL; // MAX promotes on rank 8 (top)
 
     uint64_t& opponentMask = board.board_state[!max];
-    uint64_t& currentMask = board.board_state[max];
+    uint64_t& currentMask  = board.board_state[max];
 
-    opponentMask &= ~(move.captureMask);
+    opponentMask &= ~move.captureMask;
+
     currentMask = (currentMask & ~move.indexMask) | move.moveMask;
 
-    if (move.indexMask & board.queenBoard) 
-        board.queenBoard = (board.queenBoard & ~move.indexMask) | move.moveMask;
+    bool wasQueen = board.queenBoard & move.indexMask;
+    bool promotesNow = !wasQueen && (move.moveMask & promotionRankMask);
 
-    if (move.moveMask & promotionRankMask)
-        board.queenBoard |= move.moveMask;
+    if (wasQueen || promotesNow)
+        board.queenBoard = (board.queenBoard & ~move.indexMask) | move.moveMask;
+    else
+        board.queenBoard &= ~move.moveMask;
 
     board.occupiedBoard = board.board_state[MAX] | board.board_state[MIN];
-        
+
     if (!isMinimax)
     {
         switch(move.flag)

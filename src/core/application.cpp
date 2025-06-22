@@ -215,7 +215,7 @@ namespace core
         // Terminator
         BotInfo terminator;
         terminator.name = "Terminator";
-        terminator.blunderChance = 0.2f;
+        terminator.blunderChance = 0.01f;
         terminator.speeches = {
             { "Processing... Continue gameplay.", "neutral", SpeechType::Neutral },
             { "Target acquired. Eliminated.", "capture", SpeechType::Capture },
@@ -298,10 +298,10 @@ namespace core
             { "LOSS detected. Adjusting neural weights... internally sobbing.", "lose", SpeechType::Lose },
             { "You think you've outsmarted me? Cute.", "taunt", SpeechType::Taunt },
             { "Maintain momentum. Performance graph trending upward.", "encouragement", SpeechType::Encouragement },
-            { "Surprise spike in your move complexity. Impressed. Slightly.", "surprise", SpeechType::Surprise }
+            { "Surprise spike in your move complexity. Impressed.", "surprise", SpeechType::Surprise }
         };
 
-        bots.emplace_back(Bot(netrix, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+        bots.emplace_back(Bot(netrix, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\neurabot.png"));
     }
 
     void renderBotSelection(Bot& bot, int selectedBotIndex, int botIndex, std::function<void(int)> onSelect)
@@ -345,7 +345,7 @@ namespace core
         ImGui::EndChild();
     }
 
-    void application::checkersBotSelectionMenu()
+    void application::checkersBotSelectionMenu(BitBoard& board)
     {
         ImGui::Begin("Bot Selection Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
@@ -360,6 +360,7 @@ namespace core
         if (ImGui::Button("Enter Checkers Game", ImVec2(100, 20)))
         {
             part = CurrentPart::CHECKERS;
+            board.restart();
         }
 
         ImGui::End();
@@ -369,7 +370,8 @@ namespace core
 
     void application::runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
-        if (board.getCurrentTurn() && !checkersThreadRunning)
+        auto& currentBot = bots.at(currentBotIndex);
+        if (board.getCurrentTurn() && !checkersThreadRunning && !board.isGameOver(true, board.bitboard()))
         {
             std::thread aiThread([&]() 
             {  
@@ -392,6 +394,17 @@ namespace core
 
             if (aiThread.joinable())
                 aiThread.join(); 
+
+            currentBot.handleSpeech(algorithm.getCurrentBoardScore());
+        }
+
+        if (board.isGameOver(true, board.bitboard()))
+        {
+            currentBot.chooseSpeech(SpeechType::Lose);
+        }
+        else if (board.isGameOver(false, board.bitboard()))
+        {
+            currentBot.chooseSpeech(SpeechType::Win);
         }
 
         /* if (board.getCurrentTurn())
@@ -407,7 +420,7 @@ namespace core
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
-        checkers.drawBoard();
+        checkers.drawBoard(currentBot);
         checkers.drawInfo(algorithm.getCurrentBoardScore(), bots.at(currentBotIndex));
 
         ImGui::Begin("Extra Info", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
@@ -715,7 +728,7 @@ namespace core
                 }
                 case CurrentPart::CHECKERS_SELECTION_MENU:
                 {
-                    checkersBotSelectionMenu();
+                    checkersBotSelectionMenu(board);
                     break;
                 }
                 case CurrentPart::CHECKERS:
