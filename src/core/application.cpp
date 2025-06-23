@@ -121,6 +121,20 @@ void trainCheckersNetwork()
         core::SoundHandle::add("move", movePath.c_str());
         core::SoundHandle::add("capture", capturePath.c_str());
         core::SoundHandle::add("promote", promotePath.c_str());
+
+        // Bot Sounds
+
+        //Terminator
+        core::SoundHandle::add("terminator_neutral",       "audio/terminator/neutral.mp3");
+        core::SoundHandle::add("terminator_capture",       "audio/terminator/capture.mp3");
+        core::SoundHandle::add("terminator_multi_capture", "audio/terminator/multi_capture.mp3");
+        core::SoundHandle::add("terminator_good_move",     "audio/terminator/good_move.mp3");
+        core::SoundHandle::add("terminator_bad_move",      "audio/terminator/bad_move.mp3");
+        core::SoundHandle::add("terminator_win",           "audio/terminator/win.mp3");
+        core::SoundHandle::add("terminator_lose",          "audio/terminator/lose.mp3");
+        core::SoundHandle::add("terminator_taunt",         "audio/terminator/taunt.mp3");
+        core::SoundHandle::add("terminator_encouragement", "audio/terminator/encouragement.mp3");
+        core::SoundHandle::add("terminator_surprise",      "audio/terminator/surprise.mp3");
     }
 
 namespace core
@@ -217,16 +231,16 @@ namespace core
         terminator.name = "Terminator";
         terminator.blunderChance = 0.01f;
         terminator.speeches = {
-            { "Processing... Continue gameplay.", "neutral", SpeechType::Neutral },
-            { "Target acquired. Eliminated.", "capture", SpeechType::Capture },
-            { "Multiple threats neutralized. You cannot resist.", "multi_capture", SpeechType::MultiCapture },
-            { "Acceptable. But ultimately ineffective.", "good_move", SpeechType::GoodMove },
-            { "Strategic error detected. Adjust or be terminated.", "bad_move", SpeechType::BadMove },
-            { "Mission complete. You are terminated.", "win", SpeechType::Win },
-            { "This outcome is illogical. Recalculating strategy...", "lose", SpeechType::Lose },
-            { "You fight, but your fate is sealed.", "taunt", SpeechType::Taunt },
-            { "Continue. Your survival rate remains low.", "encouragement", SpeechType::Encouragement },
-            { "Unexpected. You are adapting. That is… interesting.", "surprise", SpeechType::Surprise }
+            { "Processando... Continue a jogada.", "terminator_neutral", SpeechType::Neutral },
+            { "Alvo identificado. Eliminado sem dó.", "terminator_capture", SpeechType::Capture },
+            { "Múltiplas ameaças neutralizadas. Nem tenta fugir.", "terminator_multi_capture", SpeechType::MultiCapture },
+            { "Aceitável. Mas, no fim das contas, inútil.", "terminator_good_move", SpeechType::GoodMove },
+            { "Erro estratégico detectado. Ajuste ou será exterminado.", "terminator_bad_move", SpeechType::BadMove },
+            { "Missão cumprida. Você foi finalizado.", "terminator_win", SpeechType::Win },
+            { "Esse resultado é ilógico. Recalculando tática...", "terminator_lose", SpeechType::Lose },
+            { "Pode lutar, mas seu destino já está determinado.", "terminator_taunt", SpeechType::Taunt },
+            { "Continue. Suas chances de sobreviver são mínimas.", "terminator_encouragement", SpeechType::Encouragement },
+            { "Inesperado. Você tá aprendendo... interessante.", "terminator_surprise", SpeechType::Surprise }
         };
         bots.emplace_back(Bot(terminator, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
 
@@ -367,6 +381,7 @@ namespace core
     }
 
     float tileSize = 100.f;
+    bool newMove = true;
 
     void application::runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
@@ -378,7 +393,7 @@ namespace core
                 checkersThreadRunning = true;
                 
                 std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-                auto move = algorithm.getBestMove(board.bitboard(), trainingData, true);
+                auto move = algorithm.getBestMove(board.bitboard(), trainingData, true, currentBot.getBlunderChance());
                 std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
                 board.makeMove(move, board.bitboard());
@@ -390,11 +405,13 @@ namespace core
                 std::cout << "It checked " << std::to_string(algorithm.getCheckedMoveCount()) << " moves \n";
 
                 checkersThreadRunning = false;
+                newMove = true;
             });
 
             if (aiThread.joinable())
                 aiThread.join(); 
 
+            currentBot.stopSpeech(currentBot.getCurrentSpeech());
             currentBot.handleSpeech(algorithm.getCurrentBoardScore());
         }
 
@@ -405,6 +422,12 @@ namespace core
         else if (board.isGameOver(false, board.bitboard()))
         {
             currentBot.chooseSpeech(SpeechType::Win);
+        }
+
+        if (newMove)
+        {
+            currentBot.playSpeech(currentBot.getCurrentSpeech());
+            newMove = false;
         }
 
         /* if (board.getCurrentTurn())
@@ -423,7 +446,7 @@ namespace core
         checkers.drawBoard(currentBot);
         checkers.drawInfo(algorithm.getCurrentBoardScore(), bots.at(currentBotIndex));
 
-        ImGui::Begin("Extra Info", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin("Extra Info##2", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
         ImGui::Text("Current Turn: %s", board.getCurrentTurn() == false ? "player" : "bot");
         ImGui::Text("Board Evaluation: %2.f", static_cast<float>(algorithm.getCurrentBoardScore()));
@@ -704,7 +727,7 @@ namespace core
         BitBoard board;
         Checkers checkers(board, 100.f);
 
-        NETWORK::CheckersMinMax algorithm(20, board);
+        NETWORK::CheckersMinMax algorithm(15, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;

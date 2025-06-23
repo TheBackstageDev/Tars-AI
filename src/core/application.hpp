@@ -56,7 +56,7 @@ namespace core
         mnist::MNIST_dataset<std::vector, std::vector<uint8_t>, uint8_t> dataset{};
         std::vector<std::vector<NTARS::DATA::TrainingData<std::vector<float>>>> batches{};
 
-        int32_t currentBotIndex = -1;
+        int32_t currentBotIndex = 0;
         std::vector<Bot> bots;
         std::thread* networkThread = nullptr;
 

@@ -33,12 +33,15 @@ namespace NETWORK
         inline int32_t getCurrentBoardScore() { return boardScore; }
 
         void sortMoves(BoardStruct& board_state, std::vector<BitMove>& moves);
-        BitMove getBestMove(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max);
+        BitMove getBestMove(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max, float blunderChance = 0.0f);
     private:
 
         std::pair<int32_t, BitMove> minimax(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData,
              bool max = true, uint32_t currentDepth = 0, uint32_t maxDepth = 1, int32_t alpha = std::numeric_limits<int32_t>::min(), int32_t beta = std::numeric_limits<int32_t>::max());
         int32_t evaluatePosition(BoardStruct& currentBoard, bool max);
+        int32_t evaluateEndGame(BoardStruct& currentBoard, bool max);
+        int32_t evaluateCaptures(BoardStruct& currentBoard, bool max);
+
         std::vector<float> getTrainingLabel(uint64_t moveIndex);
         
         int32_t valueMove(BoardStruct& board_state, const BitMove& move, const bool max);

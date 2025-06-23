@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <ctime>
+#include <core/audio.hpp>
 
 Bot::Bot(BotInfo info, const std::string& path)
     : info(info)
@@ -19,7 +20,7 @@ void Bot::handleSpeech(int32_t boardScore)
     SpeechType type{SpeechType::Neutral};
     bool tendsToDraw = (boardScore >= -10 && boardScore <= 10);
 
-    int roll = std::rand() % 10;
+    int roll = std::rand() % 20;
 
     if (roll < 5)
     {
@@ -29,15 +30,15 @@ void Bot::handleSpeech(int32_t boardScore)
     {
         do {
             type = static_cast<SpeechType>(std::rand() % static_cast<int32_t>(SpeechType::Neutral));
-        } while (type == SpeechType::Win || type == SpeechType::Lose);
+        } while (type == SpeechType::Win || type == SpeechType::Lose || type == SpeechType::Capture || type == SpeechType::MultiCapture);
     }
     else
     {
-        if (boardScore > 30)
+        if (boardScore < -15)
         {
             type = SpeechType::GoodMove;
         }
-        else if (boardScore < -30)
+        else if (boardScore > 15)
         {
             type = SpeechType::BadMove;
         }
@@ -74,6 +75,16 @@ void Bot::chooseSpeech(SpeechType type)
     auto it = std::find_if(info.speeches.begin(), info.speeches.end(),
         [&](const BotSpeech& s) { return s.text == matchingSpeeches[randomIndex]; });
     info.currentSpeech = static_cast<int32_t>(std::distance(info.speeches.begin(), it));
+}
+
+void Bot::stopSpeech(uint32_t speechIndex)
+{
+    core::SoundHandle::stop(info.speeches.at(speechIndex).key.c_str());
+}
+
+void Bot::playSpeech(uint32_t speechIndex)
+{
+    core::SoundHandle::play(info.speeches.at(speechIndex).key.c_str());
 }
 
 void Bot::drawBot(bool showSpeech)

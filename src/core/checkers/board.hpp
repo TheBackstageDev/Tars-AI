@@ -17,12 +17,12 @@
 #define DOWN_LEFT 2
 #define DOWN_RIGHT 3
 
-enum class MoveFlag
+enum MoveFlag : uint64_t
 {
-    NONE,
-    CAPTURE,
-    MULTICAPTURE,
-    PROMOTION
+    NONE         = 0ULL,
+    CAPTURE      = 1ULL << 0,
+    MULTICAPTURE = 1ULL << 1,
+    PROMOTION    = 1ULL << 2
 };
 
 struct Move

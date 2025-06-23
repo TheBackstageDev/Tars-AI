@@ -312,37 +312,33 @@ uint64_t nortOne (uint64_t b) {return  b << 8;}
 void BitBoard::makeMove(const BitMove& move, BoardStruct& board, bool isMinimax)
 {
     bool max = move.indexMask & board.board_state[MAX];
-    const uint64_t promotionRankMask = !max
-        ? 0x00000000000000FFULL  // MIN promotes on rank 1 (bottom)
-        : 0xFF00000000000000ULL; // MAX promotes on rank 8 (top)
 
     uint64_t& opponentMask = board.board_state[!max];
     uint64_t& currentMask  = board.board_state[max];
 
     opponentMask &= ~move.captureMask;
-
     currentMask = (currentMask & ~move.indexMask) | move.moveMask;
 
-    bool wasQueen = board.queenBoard & move.indexMask;
-    bool promotesNow = !wasQueen && (move.moveMask & promotionRankMask);
-
-    if (wasQueen || promotesNow)
+    if (move.indexMask & board.queenBoard) 
         board.queenBoard = (board.queenBoard & ~move.indexMask) | move.moveMask;
-    else
-        board.queenBoard &= ~move.moveMask;
 
     board.occupiedBoard = board.board_state[MAX] | board.board_state[MIN];
 
+    if (move.flag & MoveFlag::PROMOTION)
+        board.queenBoard |= move.moveMask;
+
     if (!isMinimax)
     {
-        switch(move.flag)
+        if (move.flag & MoveFlag::PROMOTION)
         {
-            case MoveFlag::NONE: core::SoundHandle::play("move"); break;
-            case MoveFlag::CAPTURE:
-            case MoveFlag::MULTICAPTURE: core::SoundHandle::play("capture"); break;
-            case MoveFlag::PROMOTION: core::SoundHandle::play("promote"); break;
-            default: break;
+            core::SoundHandle::play("promote");
         }
+        if (move.flag & MoveFlag::CAPTURE || move.flag & MoveFlag::MULTICAPTURE)
+        {
+            core::SoundHandle::play("capture");
+        }
+
+        core::SoundHandle::play("move");
     }
 }
 
@@ -421,6 +417,10 @@ void BitBoard::checkMoves(const uint64_t index, bool max, std::vector<BitMove>& 
 {
     std::array<BitDirection, 4> directions = BitMove::getMoveOffsets();
 
+    const uint64_t promotionRankMask = max
+        ? 0x00000000000000FFULL  // MIN promotes on rank 1 (bottom)
+        : 0xFF00000000000000ULL; // MAX promotes on rank 8 (top)
+
     for (int32_t d = 0; d < 2; ++d)
     {
         bool leftSide = (d % 2 == 0);
@@ -432,8 +432,13 @@ void BitBoard::checkMoves(const uint64_t index, bool max, std::vector<BitMove>& 
 
         uint64_t moveMask = max ? (index << directions[d].offset) : (index >> directions[d].offset);
 
+        MoveFlag flag = MoveFlag::NONE;
+
+        if (moveMask & promotionRankMask)   
+            flag = static_cast<MoveFlag>(static_cast<int>(flag) | static_cast<int>(MoveFlag::PROMOTION));
+
         if (!(moveMask & board.occupiedBoard) && moveMask)
-            moves.emplace_back(index, moveMask, 0, MoveFlag::NONE);
+            moves.emplace_back(index, moveMask, 0, flag);
     }
 
     checkCaptures(index, max, moves, board);
@@ -519,6 +524,10 @@ void BitBoard::checkCaptures(const uint64_t index, bool max, std::vector<BitMove
     std::array<BitDirection, 4> directions = BitMove::getMoveOffsets();
     int64_t originIndex = (origin == -1) ? index : origin;
 
+    const uint64_t promotionRankMask = max
+        ? 0x00000000000000FFULL  // MIN promotes on rank 1 (bottom)
+        : 0xFF00000000000000ULL; // MAX promotes on rank 8 (top)
+
     for (const auto& d : directions)
     {  
         uint64_t jumpedPieceMask = !d.downwards ? index << d.offset : index >> d.offset;
@@ -533,9 +542,14 @@ void BitBoard::checkCaptures(const uint64_t index, bool max, std::vector<BitMove
         if (landingMask & board.occupiedBoard) continue; // is alreadly occupied
         if (!(jumpedPieceMask & board.board_state[!max]) || (captureMask & jumpedPieceMask)) continue;
 
+        MoveFlag flag = MoveFlag::CAPTURE;
+
+        if (captureMask > 0) flag = MoveFlag::MULTICAPTURE;
+        if (captureMask & promotionRankMask) flag = static_cast<MoveFlag>(static_cast<int>(flag) | static_cast<int>(MoveFlag::PROMOTION));
+
         uint64_t newCaptureMask = captureMask | jumpedPieceMask;
 
-        moves.emplace_back(originIndex, landingMask, newCaptureMask, MoveFlag::CAPTURE);
+        moves.emplace_back(originIndex, landingMask, newCaptureMask, flag);
 
         checkCaptures(landingMask, max, moves, board, originIndex, newCaptureMask);
     }

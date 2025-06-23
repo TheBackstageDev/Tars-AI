@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <algorithm>
+#include <random>
 
 namespace NETWORK
 {
@@ -29,7 +30,7 @@ namespace NETWORK
         return emptyBoard;
     }
 
-    BitMove CheckersMinMax::getBestMove(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max)
+    BitMove CheckersMinMax::getBestMove(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max, float blunderChance)
     {
         checkedMoves = 0;
 
@@ -39,7 +40,34 @@ namespace NETWORK
             minimax(board_state, trainingData, max, 0, iteration);
         }
 
-        return minimax(board_state, trainingData, max, 0, depth).second;
+        auto finalResult = minimax(board_state, trainingData, max, 0, depth);
+        BitMove bestMove = finalResult.second;
+
+        if (blunderChance > 0.0f)
+        {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+            if (dist(gen) < blunderChance)
+            {
+                std::vector<BitMove> legalMoves = board.getMoves(board_state, max);
+
+                std::vector<BitMove> badChoices;
+                for (const auto& move : legalMoves)
+                {
+                    if (!(move == bestMove))
+                        badChoices.push_back(move);
+                }
+
+                if (!badChoices.empty())
+                {
+                    return badChoices[rand() % badChoices.size()];
+                }
+            }
+        }
+
+        return bestMove;
     }
 
     std::pair<int32_t, BitMove> CheckersMinMax::minimax(
@@ -128,7 +156,6 @@ namespace NETWORK
     const uint32_t captureMultiplier = 5;    
     const uint32_t queenValue = 15;       
     const uint32_t pieceValue = 6;          
-    const uint32_t endGameCount = 8;       
 
     int32_t CheckersMinMax::valueMove(BoardStruct& board_state, const BitMove& move, bool max)
     {
@@ -137,7 +164,7 @@ namespace NETWORK
 
         score += (max ? 1 : -1) * moveCaptureCount * captureMultiplier;
 
-        uint64_t promotionColumnMask = max ? 0x0101010101010101ULL : 0x8080808080808080ULL;
+        uint64_t promotionColumnMask = !max ? 0xFF00000000000000ULL : 0x00000000000000FFULL;
         bool promotesToQueen = (move.moveMask & promotionColumnMask) && !(board_state.queenBoard & move.indexMask);
 
         if (promotesToQueen)
@@ -178,6 +205,79 @@ namespace NETWORK
         });
     }
 
+    int32_t CheckersMinMax::evaluateCaptures(BoardStruct& board_state, bool max)
+    {
+        const auto selfMoves = board.getMoves(board_state, max);
+        const auto opponentMoves = board.getMoves(board_state, !max);
+
+        int32_t selfScore = 0;
+        int32_t opponentScore = 0;
+
+        auto evaluateMove = [&](const BitMove& move, bool isSelfSide) -> int32_t {
+            int32_t score = 0;
+
+            if (move.flag & MoveFlag::CAPTURE || move.flag & MoveFlag::MULTICAPTURE)
+            {
+                int32_t captured = __popcnt64(move.captureMask);
+                score += captured * captureMultiplier;
+
+                if (move.flag == MoveFlag::MULTICAPTURE)
+                    score += static_cast<int32_t>(captured * 0.3f * captureMultiplier);
+            }
+
+            if (move.flag & MoveFlag::PROMOTION)
+            {
+                bool wasNotQueen = !(board_state.queenBoard & move.indexMask);
+                if (wasNotQueen)
+                    score += queenValue / 2;
+            }
+
+            return score;
+        };
+
+        for (const BitMove& move : selfMoves)
+            selfScore += evaluateMove(move, true);
+
+        for (const BitMove& move : opponentMoves)
+            opponentScore += evaluateMove(move, false);
+
+        return selfScore - opponentScore;
+    }
+
+    const uint32_t endGameCount = 10;
+
+    int32_t CheckersMinMax::evaluateEndGame(BoardStruct& board_state, bool max)
+    {
+        const int32_t maxMen = __popcnt64(board_state.board_state[max] & ~board_state.queenBoard);
+        const int32_t minMen = __popcnt64(board_state.board_state[!max] & ~board_state.queenBoard);
+        const int32_t maxQueens = __popcnt64(board_state.board_state[max] & board_state.queenBoard);
+        const int32_t minQueens = __popcnt64(board_state.board_state[!max] & board_state.queenBoard);
+
+        const int32_t totalPieces = maxMen + minMen;
+        if (totalPieces > endGameCount) return 0 ;
+
+        int32_t endgameScore = 0;
+
+        endgameScore += (maxQueens - minQueens) * (queenValue / 2);
+
+        if (maxQueens > 0 && minQueens == 0 && minMen == 1)
+            endgameScore += queenValue;
+
+        if (minQueens > 0 && maxQueens == 0 && maxMen == 1)
+            endgameScore -= queenValue;
+
+        const int maxMobility = static_cast<int>(board.getMoves(board_state, max).size());
+        const int minMobility = static_cast<int>(board.getMoves(board_state, !max).size());
+
+        if (maxMobility < 3)
+            endgameScore -= pieceValue / 2;
+
+        if (minMobility < 3)
+            endgameScore += pieceValue / 2;
+
+        return static_cast<int32_t>(endgameScore * moveNumber / (totalPieces + 1));
+    }
+
     int32_t CheckersMinMax::evaluatePosition(BoardStruct& board_state, bool max)
     {
         if (isGameOver(board_state, !max))
@@ -185,7 +285,7 @@ namespace NETWORK
 
         int32_t score = 0;
 
-        // Material evaluation
+        // Material count
         const int32_t maxMen = __popcnt64(board_state.board_state[max] & ~board_state.queenBoard);
         const int32_t minMen = __popcnt64(board_state.board_state[!max] & ~board_state.queenBoard);
         const int32_t maxQueens = __popcnt64(board_state.board_state[max] & board_state.queenBoard);
@@ -194,48 +294,19 @@ namespace NETWORK
         score += (maxMen - minMen) * pieceValue;
         score += (maxQueens - minQueens) * queenValue;
 
-        // Mobility
-        std::vector<BitMove> maxMoves = board.getMoves(board_state, true);
-        std::vector<BitMove> minMoves = board.getMoves(board_state, false);
+        const std::vector<BitMove> maxMoves = board.getMoves(board_state, true);
+        const std::vector<BitMove> minMoves = board.getMoves(board_state, false);
+
         score += static_cast<int32_t>(maxMoves.size() - minMoves.size()) * (pieceValue / 3);
 
-        // Potential king promotions
         const uint64_t maxPromoMask = max ? 0xFF00000000000000ULL : 0x00000000000000FFULL;
         const uint64_t minPromoMask = max ? 0x00000000000000FFULL : 0xFF00000000000000ULL;
         const int32_t maxNearPromotion = __popcnt64(board_state.board_state[max] & maxPromoMask);
         const int32_t minNearPromotion = __popcnt64(board_state.board_state[!max] & minPromoMask);
+
         score += (maxNearPromotion - minNearPromotion) * (queenValue / 2);
 
-        // Threats and captures
-        uint64_t opponentAttackSquares = 0;
-        for (const BitMove& move : minMoves)
-            opponentAttackSquares |= move.moveMask;
-
-        for (const BitMove& move : maxMoves)
-        {
-            if (move.flag == MoveFlag::CAPTURE || move.flag == MoveFlag::MULTICAPTURE)
-            {
-                int32_t captured = __popcnt64(move.captureMask);
-                score += captured * captureMultiplier;
-
-                if (move.flag == MoveFlag::MULTICAPTURE)
-                    score += static_cast<int32_t>(captured * 0.2f * captureMultiplier);
-            }
-
-            // Penalize risky squares
-            if (opponentAttackSquares & move.moveMask)
-                score -= pieceValue / 2;
-        }
-
-        // Endgame heuristics
-        const int32_t totalPieces = maxMen + minMen + maxQueens + minQueens;
-        if (totalPieces <= endGameCount)
-        {
-            const bool lowMobility = maxMoves.size() < 4;
-            score += (max ? 1 : -1) * (lowMobility ? -queenValue : queenValue / 2);
-        }
-
-        return score;
+        return (max ? 1 : -1) * (score + evaluateCaptures(board_state, max) + evaluateEndGame(board_state, max));
     }
 
 } // namespace NETWORK

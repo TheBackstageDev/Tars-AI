@@ -61,6 +61,8 @@ public:
 
     void chooseSpeech(SpeechType type);
     void handleSpeech(int32_t boardScore);
+    void stopSpeech(uint32_t speechIndex);
+    void playSpeech(uint32_t speechIndex);
     bool shouldBlunder();
 
     void drawBot(bool showSpeech = false);
