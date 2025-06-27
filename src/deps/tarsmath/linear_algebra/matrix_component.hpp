@@ -24,6 +24,8 @@ namespace TMATH
         Matrix_t(const T& x, size_t rows, size_t cols)
             : rows_(rows), cols_(cols), elements_(rows * cols, x)
         {
+            assert(cols_ > 0 && "Matrix must have at least 1 column for rowAt()[0] assignment");
+
             for(size_t i = 0; i < rows; ++i)
             {
                 rowAt(i)[0] = x;
@@ -86,20 +88,16 @@ namespace TMATH
         }
 
         constexpr bool operator==(const Matrix_t<T>& other) const {
-            if (this->rows() != other.rows() || this->cols() != other.cols()) {
-                return false;
-            }
-
-            for (size_t i = 0; i < rows_ * cols_; ++i) {
-                if (elements_[i] != other.elements_[i])
-                    return false;
-            }
-
-            return true;
+            return *this == other;
         }
 
         constexpr bool operator!=(const Matrix_t<T>& other) const {
             return !(*this == other);
+        }
+
+        constexpr void zero()
+        {
+            std::fill(elements_.begin(), elements_.end(), T(0));
         }
         
         Matrix_t<T> operator+(const Matrix_t<T>& other) const

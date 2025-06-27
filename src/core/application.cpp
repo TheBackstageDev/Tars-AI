@@ -43,8 +43,8 @@ bool finishedTraining = false;
 
 void trainCheckersNetwork()
 {
-    NTARS::DenseNeuralNetwork network{{64, 512, 256, 121, 64}, "CheckinTime"};
-    //NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
+    //NTARS::DenseNeuralNetwork network{{64, 1000, 500, 64}, "CheckinTime"};
+    NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
 
     const size_t batch_size = 300;
     float learningRate = 1.0;
@@ -64,7 +64,7 @@ void trainCheckersNetwork()
     float learning_rate_threshold = 0.9;
     float result = 0.0;
 
-    for (int32_t epoch = 0; epoch < 2; ++epoch)
+    for (int32_t epoch = 0; epoch < 10; ++epoch)
     {
         for (auto& minibatch : batches)
         {
@@ -137,6 +137,70 @@ void trainCheckersNetwork()
         core::SoundHandle::add("terminator_surprise",      "audio/terminator/surprise.mp3");
     }
 
+    BoardStruct generateRandomBoard()
+    {
+        const int32_t maxPiecesPerSide = 12;
+        BoardStruct board;
+
+        uint64_t occupied = 0ULL;
+        board.board_state[MIN] = 0ULL;
+        board.board_state[MAX] = 0ULL;
+        board.queenBoard = 0ULL;
+
+        std::vector<uint8_t> legalIndices;
+        for (uint8_t i = 0; i < 64; ++i)
+        {
+            if ((i + (i / 8)) % 2 == 1) // dark squares only
+                legalIndices.push_back(i);
+        }
+
+        std::shuffle(legalIndices.begin(), legalIndices.end(), std::mt19937{ std::random_device{}() });
+
+        int32_t totalMax = std::rand() % (maxPiecesPerSide + 1);
+        int32_t totalMin = std::rand() % (maxPiecesPerSide + 1);
+
+        int32_t index = 0;
+        for (int i = 0; i < totalMax; ++i)
+        {
+            uint64_t bit = 1ULL << legalIndices[index++];
+            board.board_state[MAX] |= bit;
+            if (std::rand() % 4 == 0) // 25% chance it's a queen
+                board.queenBoard |= bit;
+        }
+
+        for (int i = 0; i < totalMin; ++i)
+        {
+            uint64_t bit = 1ULL << legalIndices[index++];
+            board.board_state[MIN] |= bit;
+            if (std::rand() % 4 == 0)
+                board.queenBoard |= bit;
+        }
+
+        board.occupiedBoard = board.board_state[MAX] | board.board_state[MIN];
+
+        return board;
+    }
+
+    void gatherCheckersData(NETWORK::CheckersMinMax& algorithm)
+    {
+        size_t checkersDataCurrent = 0;
+        const size_t targetCheckersData = 100000;
+
+        std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
+
+        while (checkersDataCurrent < targetCheckersData)
+        {
+            BoardStruct trainingBoard = generateRandomBoard();
+
+            algorithm.getBestMove(trainingBoard, trainingData, std::rand() % 2 == 0, 0.0f);
+
+            checkersDataCurrent = trainingData.size();
+        }
+
+        NTARS::DATA::saveListDataJSON(trainingData, "CheckersData");
+    }
+
+
 namespace core
 {
     application::application(const std::string& title, uint32_t width, uint32_t height)
@@ -156,7 +220,7 @@ namespace core
                 newData.data = std::vector<float>(data.at(i + j).begin(), data.at(i + j).end());
 
                 std::vector<float> expected(10, 0.0);
-                const int expectedLabel = static_cast<int>(dataset.training_labels.at(i + j));
+                const int32_t expectedLabel = static_cast<int32_t>(dataset.training_labels.at(i + j));
                 expected.at(expectedLabel) = 1.0;
                 newData.label = expected;
         
@@ -246,7 +310,7 @@ namespace core
 
         // GlitchBot
         BotInfo glitch;
-        glitch.name = "GlitchBot";
+        glitch.name = "Et Bilu";
         glitch.blunderChance = 0.35f;
         glitch.speeches = {
             { "Uhh... Move? Maybe? Okay go!", "neutral", SpeechType::Neutral },
@@ -386,7 +450,7 @@ namespace core
     void application::runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
         auto& currentBot = bots.at(currentBotIndex);
-        if (board.getCurrentTurn() && !checkersThreadRunning && !board.isGameOver(true, board.bitboard()))
+        if (board.getCurrentTurn() && !checkersThreadRunning && currentBotIndex != 4 && !board.isGameOver(true, board.bitboard()))
         {
             std::thread aiThread([&]() 
             {  
@@ -413,6 +477,19 @@ namespace core
 
             currentBot.stopSpeech(currentBot.getCurrentSpeech());
             currentBot.handleSpeech(algorithm.getCurrentBoardScore());
+        } 
+        else if (board.getCurrentTurn() && currentBotIndex == 4) // Neural Network
+        {
+            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+            auto activations = network.run(board.vectorBoard(board.bitboard()));
+            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+
+            std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() << " ns" << std::endl;
+
+            checkers.handleNetworkAction(activations, algorithm);
+
+            currentBot.stopSpeech(currentBot.getCurrentSpeech());
+            currentBot.handleSpeech(algorithm.getCurrentBoardScore());
         }
 
         if (board.isGameOver(true, board.bitboard()))
@@ -429,17 +506,6 @@ namespace core
             currentBot.playSpeech(currentBot.getCurrentSpeech());
             newMove = false;
         }
-
-        /* if (board.getCurrentTurn())
-        {
-            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-            auto activations = network.run(board.vectorBoard(board.bitboard()));
-            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-
-            std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() << " ns" << std::endl;
-
-            checkers.handleNetworkAction(activations, algorithm);
-        } */
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
@@ -555,7 +621,7 @@ namespace core
                             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
                             std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
-                            std::cout << "it took " << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds to complete this training session" << std::endl;
+                            std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds to complete this training session" << std::endl;
 
                             activations = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
                             if (result > 0.97)
@@ -727,8 +793,10 @@ namespace core
         BitBoard board;
         Checkers checkers(board, 100.f);
 
-        NETWORK::CheckersMinMax algorithm(15, board);
+        NETWORK::CheckersMinMax algorithm(10, board);
         NTARS::DenseNeuralNetwork network{"CheckinTime.json"}; 
+
+        //gatherCheckersData(algorithm);
 
         std::vector<NTARS::DATA::TrainingData<std::vector<float>>> trainingData;
 
@@ -767,8 +835,6 @@ namespace core
             glfwSwapBuffers(window->window());
             glfwPollEvents();
         }
-
-        NTARS::DATA::saveListDataJSON(trainingData, "CheckersData");
     }
 
     

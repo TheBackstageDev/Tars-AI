@@ -9,6 +9,8 @@
 #include <numeric>
 #include <imgui/imgui/imgui.h>
 
+#include <mutex>
+
 namespace NTARS
 {
     enum NeuralNetworkFlags_
@@ -55,6 +57,12 @@ namespace NTARS
             return meanSquaredError(results.data(), expected.data(), results.size());
         }
 
+        void calcGradient(const NTARS::DATA::TrainingData<std::vector<float>>& data,
+        std::vector<TMATH::Matrix_t<float>>& localWeightGradients,
+        std::vector<TMATH::Matrix_t<float>>& localBiasGradients,
+        int32_t& numCorrect,
+        int32_t& numWrong);
+
         std::vector<TMATH::Matrix_t<float>> weights;
         std::vector<TMATH::Matrix_t<float>> biases;
 
@@ -65,8 +73,12 @@ namespace NTARS
 
         NeuralNetworkFlags_ flags;
 
+        // Thread related
+
+        std::mutex gradMutex;
+        std::mutex gradMutex2;
+
         // Training Buffers
-        std::vector<TMATH::Matrix_t<float>> deltas;
         std::vector<TMATH::Matrix_t<float>> weightGradients;
         std::vector<TMATH::Matrix_t<float>> biasGradients;
     };

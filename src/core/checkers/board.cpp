@@ -363,7 +363,6 @@ std::vector<float> BitBoard::vectorBoard(BoardStruct& board)
     return vec;
 }
 
-
 std::vector<uint64_t> BitBoard::getPieceIndices(BoardStruct& board, bool max)
 {
     std::vector<uint64_t> indices;
