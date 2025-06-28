@@ -210,8 +210,6 @@ namespace NTARS
 
     void DenseNeuralNetwork::calcGradient(
         const NTARS::DATA::TrainingData<std::vector<float>> &data,
-        std::vector<TMATH::Matrix_t<float>> &localWeightGradients,
-        std::vector<TMATH::Matrix_t<float>> &localBiasGradients,
         int32_t &numCorrect,
         int32_t &numWrong)
     {
@@ -247,8 +245,11 @@ namespace NTARS
                                        ? TMATH::Matrix_t<float>(data.data, data.data.size(), 1)
                                        : TMATH::Matrix_t<float>(_layers[l - 1].getActivations(), _layers[l - 1].getActivations().size(), 1);
 
-            localWeightGradients[l] += deltas[l] * prevActivations.transpose();
-            localBiasGradients[l] += deltas[l];
+            {
+                std::lock_guard<std::mutex> lock(gradMutex);
+                weightGradients[l] += deltas[l] * prevActivations.transpose();
+                biasGradients[l] += deltas[l];
+            }                             
         }
 
         (getMostActive(outputs) == expectedLabel) ? ++numCorrect : ++numWrong;
@@ -268,11 +269,7 @@ namespace NTARS
         const size_t numThreads = std::thread::hardware_concurrency();
         const size_t chunkSize = miniBatch.size() / numThreads;
 
-        std::vector<std::future<std::tuple<
-            std::vector<TMATH::Matrix_t<float>>,
-            std::vector<TMATH::Matrix_t<float>>,
-            int32_t, int32_t>>>
-            futures;
+        std::vector<std::future<std::pair<int32_t, int32_t>>> futures;
 
         for (size_t t = 0; t < numThreads; ++t)
         {
@@ -290,23 +287,15 @@ namespace NTARS
                 int32_t localCorrect = 0, localWrong = 0;
 
                 for (size_t i = start; i < end; ++i)
-                    calcGradient(miniBatch[i], localWGrads, localBGrads, localCorrect, localWrong);
+                    calcGradient(miniBatch[i], localCorrect, localWrong);
 
-                return std::make_tuple(localWGrads, localBGrads, localCorrect, localWrong); }));
+                return std::make_pair(localCorrect, localWrong); }));
         }
 
-        for (auto &fut : futures)
-        {
-            auto [wgrads, bgrads, correct, wrong] = fut.get();
-
+        for (auto& fut : futures) {
+            auto [correct, wrong] = fut.get();
             numCorrect += correct;
             numWrong += wrong;
-
-            for (size_t l = 0; l < _layers.size(); ++l)
-            {
-                weightGradients[l] += wgrads[l];
-                biasGradients[l] += bgrads[l];
-            }
         }
 
         float batchSize = static_cast<float>(miniBatch.size());

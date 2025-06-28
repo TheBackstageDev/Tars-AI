@@ -7,6 +7,7 @@
 #include <vector>
 #include <assert.h>
 #include <stdexcept>
+#include <algorithm>
 #include <omp.h>
 
 namespace TMATH
@@ -95,19 +96,27 @@ namespace TMATH
             return !(*this == other);
         }
 
+        T& operator[](size_t index) { return elements_[index]; }
+        const T& operator[](size_t index) const { return elements_[index]; }
+
         constexpr void zero()
         {
             std::fill(elements_.begin(), elements_.end(), T(0));
+        }
+
+        inline constexpr size_t size() const
+        {
+            return elements_.size(); 
         }
         
         Matrix_t<T> operator+(const Matrix_t<T>& other) const
         {
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for addition");
+
             Matrix_t<T> result(rows_, cols_);
-            for (size_t i = 0; i < elements_.size(); ++i)
-            {
-                result.elements_[i] = elements_[i] + other.elements_[i];
-            }
+            std::transform(elements_.begin(), elements_.end(), other.elements_.begin(), result.elements_.begin(),
+                        std::plus<>()); 
+
             return result;
         }
         Matrix_t<T> operator-(const Matrix_t<T>& other) const
@@ -115,30 +124,34 @@ namespace TMATH
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for subtraction");
     
             Matrix_t<T> result(rows_, cols_);
-            for (size_t i = 0; i < elements_.size(); ++i)
-            {
-                result.elements_[i] = elements_[i] - other.elements_[i];
-            }
+            std::transform(elements_.begin(), elements_.end(), other.elements_.begin(), result.elements_.begin(),
+                        std::minus<>()); 
+
             return result;
         }
         Matrix_t<T> operator*(const Matrix_t<T>& other) const
         {
-            assert(cols_ == other.rows() && "Matrix multiplication requires the number of columns in the first matrix to be equal to the number of rows in the second matrix");
+            assert(cols_ == other.rows() && "Incompatible matrix sizes for multiplication");
 
-            Matrix_t<T> result(rows_, other.cols());
+            size_t M = rows_, N = other.cols(), K = cols_;
+            Matrix_t<T> result(M, N);
 
-            for (size_t i = 0; i < rows_; ++i)
+            const T* A = elements_.data();
+            const T* B = other.elements_.data();
+            T* C = result.elements_.data();
+
+            for (size_t i = 0; i < M; ++i)
             {
-                for (size_t j = 0; j < other.cols(); ++j)
+                for (size_t k = 0; k < K; ++k)
                 {
-                    T sum = T{};
-                    for (size_t k = 0; k < cols_; ++k)
+                    T a = A[i * K + k];
+                    for (size_t j = 0; j < N; ++j)
                     {
-                        sum += at(i, k) * other.at(k, j);
+                        C[i * N + j] += a * B[k * N + j];
                     }
-                    result.at(i, j) = sum;
                 }
             }
+
             return result;
         }
         Matrix_t<T> operator/(const Matrix_t<T>& other) const
@@ -220,41 +233,31 @@ namespace TMATH
         {
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for addition");
 
-            for (size_t i = 0; i < rows_; ++i)
-            {
-                for (size_t j = 0; j < cols_; ++j)
-                {
-                    at(i, j) += other.at(i, j);
-                }
-            }
+            std::transform(elements_.begin(), elements_.end(), other.elements_.begin(), elements_.begin(),
+                        std::plus<>()); 
+
             return *this;
         }
         Matrix_t<T>& operator-=(const Matrix_t<T>& other)
         {
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for subtraction");
 
-            for (size_t i = 0; i < rows_; ++i)
-            {
-                for (size_t j = 0; j < cols_; ++j)
-                {
-                    at(i, j) -= other.at(i, j);
-                }
-            }
+            std::transform(elements_.begin(), elements_.end(), other.elements_.begin(), elements_.begin(),
+                        std::minus<>()); 
+
             return *this;
         }
-
-        Matrix_t<T> elementWiseMultiplication(const Matrix_t<T>& otherMatrix) const
+        Matrix_t<T> elementWiseMultiplication(const Matrix_t<T>& other) const
         {
-            assert((rows_ == otherMatrix.rows_ && cols_ == otherMatrix.cols_) && "Matrix dimensions must agree for element-wise multiplication");
+            assert(rows_ == other.rows_ && cols_ == other.cols_ && "Matrix dimensions must agree for element-wise multiplication");
+
             Matrix_t<T> result(rows_, cols_);
-            for (size_t row = 0; row < rows_; ++row)
-            {
-                for (size_t col = 0; col < cols_; ++col)
-                {
-                    result.at(row, col) = at(row, col) * otherMatrix.at(row, col);
-                }
-            }
-        
+            std::transform(elements_.begin(),
+                        elements_.end(),
+                        other.elements_.begin(),
+                        result.elements_.begin(),  // Only works if accessible!
+                        std::multiplies<>());
+
             return result;
         }
         Matrix_t<T> elementWiseDivision(const Matrix_t<T>& otherMatrix) const
@@ -271,7 +274,6 @@ namespace TMATH
         
             return result;
         }
-
         Matrix_t<T> sqrt()
         {
             Matrix_t<T> result(rows_, cols_);

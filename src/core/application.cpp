@@ -43,10 +43,10 @@ bool finishedTraining = false;
 
 void trainCheckersNetwork()
 {
-    //NTARS::DenseNeuralNetwork network{{64, 1000, 500, 64}, "CheckinTime"};
+    //NTARS::DenseNeuralNetwork network{{64, 2000, 1000, 500, 64}, "CheckinTime"};
     NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
 
-    const size_t batch_size = 300;
+    const size_t batch_size = 500;
     float learningRate = 1.0;
 
     std::vector<NTARS::DATA::TrainingData<std::vector<float>>> rawData = NTARS::DATA::loadDataListJSON<std::vector<float>>("CheckersData");
@@ -64,7 +64,7 @@ void trainCheckersNetwork()
     float learning_rate_threshold = 0.9;
     float result = 0.0;
 
-    for (int32_t epoch = 0; epoch < 10; ++epoch)
+    for (int32_t epoch = 0; epoch < 2; ++epoch)
     {
         for (auto& minibatch : batches)
         {
@@ -79,7 +79,7 @@ void trainCheckersNetwork()
             }
     
             std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
-            std::cout << "it took " << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds to complete this training session" << std::endl;
+            std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds to complete this training session" << std::endl;
         }
         
         network.save();
@@ -290,41 +290,23 @@ namespace core
 
     void application::initBots()
     {
-        // Terminator
-        BotInfo terminator;
-        terminator.name = "Terminator";
-        terminator.blunderChance = 0.01f;
-        terminator.speeches = {
-            { "Processando... Continue a jogada.", "terminator_neutral", SpeechType::Neutral },
-            { "Alvo identificado. Eliminado sem dó.", "terminator_capture", SpeechType::Capture },
-            { "Múltiplas ameaças neutralizadas. Nem tenta fugir.", "terminator_multi_capture", SpeechType::MultiCapture },
-            { "Aceitável. Mas, no fim das contas, inútil.", "terminator_good_move", SpeechType::GoodMove },
-            { "Erro estratégico detectado. Ajuste ou será exterminado.", "terminator_bad_move", SpeechType::BadMove },
-            { "Missão cumprida. Você foi finalizado.", "terminator_win", SpeechType::Win },
-            { "Esse resultado é ilógico. Recalculando tática...", "terminator_lose", SpeechType::Lose },
-            { "Pode lutar, mas seu destino já está determinado.", "terminator_taunt", SpeechType::Taunt },
-            { "Continue. Suas chances de sobreviver são mínimas.", "terminator_encouragement", SpeechType::Encouragement },
-            { "Inesperado. Você tá aprendendo... interessante.", "terminator_surprise", SpeechType::Surprise }
+        // etBilu
+        BotInfo etBilu;
+        etBilu.name = "Et Bilu";
+        etBilu.blunderChance = 0.35f;
+        etBilu.speeches = {
+            { "Busquem conhecimento... e talvez um plano melhor.", "neutral", SpeechType::Neutral },
+            { "Isso sim foi um movimento de outro mundo!", "capture", SpeechType::Capture },
+            { "Duplo impacto! As estrelas alinharam mesmo, hein?", "multi_capture", SpeechType::MultiCapture },
+            { "Incrível. Você deve estar sintonizado com o cosmos.", "good_move", SpeechType::GoodMove },
+            { "Hmm... isso não estava nos meus planos intergalácticos.", "bad_move", SpeechType::BadMove },
+            { "A vitória é uma vibração... e hoje ela está comigo!", "win", SpeechType::Win },
+            { "Droga, terei que buscar comer cimento..", "lose", SpeechType::Lose },
+            { "Você tá jogando bem... pra um terráqueo.", "taunt", SpeechType::Taunt },
+            { "Você tem potencial... se continuar buscando conhecimento.", "encouragement", SpeechType::Encouragement },
+            { "Essa jogada... vibrou estranho.", "surprise", SpeechType::Surprise }
         };
-        bots.emplace_back(Bot(terminator, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
-
-        // GlitchBot
-        BotInfo glitch;
-        glitch.name = "Et Bilu";
-        glitch.blunderChance = 0.35f;
-        glitch.speeches = {
-            { "Uhh... Move? Maybe? Okay go!", "neutral", SpeechType::Neutral },
-            { "Whoa! That actually worked?!", "capture", SpeechType::Capture },
-            { "Double kill! Pure chaos.", "multi_capture", SpeechType::MultiCapture },
-            { "Heh, total accident. I'll take it.", "good_move", SpeechType::GoodMove },
-            { "Oops. Lag... right?", "bad_move", SpeechType::BadMove },
-            { "I win! Wait... that was supposed to happen?", "win", SpeechType::Win },
-            { "404: Skill not found.", "lose", SpeechType::Lose },
-            { "Gotta admit, that was kinda slick.", "taunt", SpeechType::Taunt },
-            { "You might actually pull this off. Weird.", "encouragement", SpeechType::Encouragement },
-            { "Unexpected move. Processing glitch...", "surprise", SpeechType::Surprise }
-        };
-        bots.emplace_back(Bot(glitch, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+        bots.emplace_back(Bot(etBilu, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
 
         // Strategos
         BotInfo strategos;
@@ -380,6 +362,24 @@ namespace core
         };
 
         bots.emplace_back(Bot(netrix, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\neurabot.png"));
+
+                // Terminator
+        BotInfo terminator;
+        terminator.name = "Terminator";
+        terminator.blunderChance = 0.01f;
+        terminator.speeches = {
+            { "Processando... Continue a jogada.", "terminator_neutral", SpeechType::Neutral },
+            { "Alvo identificado. Eliminado sem dó.", "terminator_capture", SpeechType::Capture },
+            { "Múltiplas ameaças neutralizadas. Nem tenta fugir.", "terminator_multi_capture", SpeechType::MultiCapture },
+            { "Aceitável. Mas, no fim das contas, inútil.", "terminator_good_move", SpeechType::GoodMove },
+            { "Erro estratégico detectado. Ajuste ou será exterminado.", "terminator_bad_move", SpeechType::BadMove },
+            { "Missão cumprida. Você foi finalizado.", "terminator_win", SpeechType::Win },
+            { "Esse resultado é ilógico. Recalculando tática...", "terminator_lose", SpeechType::Lose },
+            { "Pode lutar, mas seu destino já está determinado.", "terminator_taunt", SpeechType::Taunt },
+            { "Continue. Suas chances de sobreviver são mínimas.", "terminator_encouragement", SpeechType::Encouragement },
+            { "Inesperado. Você tá aprendendo... interessante.", "terminator_surprise", SpeechType::Surprise }
+        };
+        bots.emplace_back(Bot(terminator, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
     }
 
     void renderBotSelection(Bot& bot, int selectedBotIndex, int botIndex, std::function<void(int)> onSelect)
