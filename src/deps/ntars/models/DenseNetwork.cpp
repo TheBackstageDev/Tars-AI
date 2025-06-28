@@ -156,7 +156,7 @@ namespace NTARS
         for (size_t l = 0; l < _layers.size(); ++l)
         {
             currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
-            activations[l] = std::move(currentInputs);
+            activations[l] = currentInputs;
         }
 
         return ForwardResult{currentInputs, activations};
