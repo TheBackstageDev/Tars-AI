@@ -148,17 +148,18 @@ namespace NTARS
         }
     };
 
-    std::vector<float> DenseNeuralNetwork::run(const std::vector<float> &inputs, bool slowRun)
+    ForwardResult DenseNeuralNetwork::run(const std::vector<float> &inputs)
     {
         std::vector<float> currentInputs = inputs;
+        std::vector<std::vector<float>> activations(_layers.size());
+
         for (size_t l = 0; l < _layers.size(); ++l)
         {
             currentInputs = _layers[l].forward(currentInputs, weights[l], biases[l]);
-            if (slowRun)
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            activations[l] = std::move(currentInputs);
         }
 
-        return currentInputs;
+        return ForwardResult{currentInputs, activations};
     }
 
     void DenseNeuralNetwork::save()
@@ -210,10 +211,12 @@ namespace NTARS
 
     void DenseNeuralNetwork::calcGradient(
         const NTARS::DATA::TrainingData<std::vector<float>> &data,
+        std::vector<TMATH::Matrix_t<float>>& localWGradient,
+        std::vector<TMATH::Matrix_t<float>>& localBGradient,
         int32_t &numCorrect,
         int32_t &numWrong)
     {
-        std::vector<float> outputs = run(data.data);
+        ForwardResult fwdResult = run(data.data);
         const std::vector<float> &expected = data.label;
 
         int expectedLabel = std::distance(expected.begin(), std::find(expected.begin(), expected.end(), 1));
@@ -226,9 +229,9 @@ namespace NTARS
             deltas.emplace_back(TMATH::Matrix_t<float>(layer.getNumOutputs(), 1));
         }
 
-        TMATH::Matrix_t<float> outputDelta(outputs.size(), 1);
-        for (size_t i = 0; i < outputs.size(); ++i)
-            outputDelta.at(i, 0) = expected[i] - outputs[i];
+        TMATH::Matrix_t<float> outputDelta(fwdResult.output.size(), 1);
+        for (size_t i = 0; i < fwdResult.output.size(); ++i)
+            outputDelta.at(i, 0) = expected[i] - fwdResult.output[i];
 
         deltas.back() = outputDelta;
 
@@ -237,25 +240,22 @@ namespace NTARS
             if (l != 0)
             {
                 auto errorTerm = deltas[l].transpose() * weights[l];
-                auto deriv = TMATH::sigmoid_derivative_matrix(_layers[l - 1].getActivations());
+                auto deriv = TMATH::sigmoid_derivative_matrix(fwdResult.activations[l - 1]);
                 deltas[l - 1] = deriv.elementWiseMultiplication(errorTerm.transpose());
             }
 
             auto prevActivations = (l == 0)
                                        ? TMATH::Matrix_t<float>(data.data, data.data.size(), 1)
-                                       : TMATH::Matrix_t<float>(_layers[l - 1].getActivations(), _layers[l - 1].getActivations().size(), 1);
+                                       : TMATH::Matrix_t<float>(fwdResult.activations[l - 1], fwdResult.activations[l - 1].size(), 1);
 
-            {
-                std::lock_guard<std::mutex> lock(gradMutex);
-                weightGradients[l] += deltas[l] * prevActivations.transpose();
-                biasGradients[l] += deltas[l];
-            }                             
+            localWGradient[l] += deltas[l] * prevActivations.transpose();
+            localBGradient[l] += deltas[l];                          
         }
 
-        (getMostActive(outputs) == expectedLabel) ? ++numCorrect : ++numWrong;
+        (getMostActive(fwdResult.output) == expectedLabel) ? ++numCorrect : ++numWrong;
     }
 
-    float DenseNeuralNetwork::trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>> &miniBatch, float learningRate, bool slowTrain)
+    float DenseNeuralNetwork::trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>> &miniBatch, float learningRate)
     {
         int32_t numCorrect = 0;
         int32_t numWrong = 0;
@@ -269,12 +269,16 @@ namespace NTARS
         const size_t numThreads = std::thread::hardware_concurrency();
         const size_t chunkSize = miniBatch.size() / numThreads;
 
-        std::vector<std::future<std::pair<int32_t, int32_t>>> futures;
+        std::vector<std::future<std::tuple<
+            std::vector<TMATH::Matrix_t<float>>, // weight grads
+            std::vector<TMATH::Matrix_t<float>>, // bias grads
+            int32_t, int32_t                     // correct/wrong
+        >>> futures;
 
         for (size_t t = 0; t < numThreads; ++t)
         {
             futures.emplace_back(std::async(std::launch::async, [&, t]()
-                                            {
+            {
                 size_t start = t * chunkSize;
                 size_t end = (t == numThreads - 1) ? miniBatch.size() : (t + 1) * chunkSize;
 
@@ -287,15 +291,21 @@ namespace NTARS
                 int32_t localCorrect = 0, localWrong = 0;
 
                 for (size_t i = start; i < end; ++i)
-                    calcGradient(miniBatch[i], localCorrect, localWrong);
+                    calcGradient(miniBatch[i], localWGrads, localBGrads, localCorrect, localWrong);
 
-                return std::make_pair(localCorrect, localWrong); }));
+                return std::make_tuple(localWGrads, localBGrads, localCorrect, localWrong); 
+            }));
         }
 
         for (auto& fut : futures) {
-            auto [correct, wrong] = fut.get();
+            auto [localWGrads, localBGrads, correct, wrong] = fut.get();
             numCorrect += correct;
             numWrong += wrong;
+
+            for (size_t l = 0; l < _layers.size(); ++l) {
+                weightGradients[l] += localWGrads[l];
+                biasGradients[l] += localBGrads[l];
+            }
         }
 
         float batchSize = static_cast<float>(miniBatch.size());
@@ -303,9 +313,6 @@ namespace NTARS
         {
             weights[l] += weightGradients[l] * (learningRate / batchSize);
             biases[l] += biasGradients[l] * (learningRate / batchSize);
-
-            if (slowTrain)
-                std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
 
         return static_cast<float>(numCorrect) / (numCorrect + numWrong);

@@ -43,8 +43,8 @@ bool finishedTraining = false;
 
 void trainCheckersNetwork()
 {
-    //NTARS::DenseNeuralNetwork network{{64, 2000, 1000, 500, 64}, "CheckinTime"};
-    NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
+    NTARS::DenseNeuralNetwork network{{64, 500, 250, 100, 64}, "CheckinTime"};
+    //NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
 
     const size_t batch_size = 500;
     float learningRate = 1.0;
@@ -69,7 +69,7 @@ void trainCheckersNetwork()
         for (auto& minibatch : batches)
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-            result = network.trainCPU(minibatch, learningRate, false);
+            result = network.trainCPU(minibatch, learningRate);
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     
             if (result >= learning_rate_threshold)
@@ -450,7 +450,7 @@ namespace core
     void application::runCheckers(Checkers& checkers, BitBoard& board, NETWORK::CheckersMinMax& algorithm, NTARS::DenseNeuralNetwork& network, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData)
     {
         auto& currentBot = bots.at(currentBotIndex);
-        if (board.getCurrentTurn() && !checkersThreadRunning && currentBotIndex != 4 && !board.isGameOver(true, board.bitboard()))
+        if (board.getCurrentTurn() && !checkersThreadRunning && currentBotIndex != 3 && !board.isGameOver(true, board.bitboard()))
         {
             std::thread aiThread([&]() 
             {  
@@ -478,15 +478,15 @@ namespace core
             currentBot.stopSpeech(currentBot.getCurrentSpeech());
             currentBot.handleSpeech(algorithm.getCurrentBoardScore());
         } 
-        else if (board.getCurrentTurn() && currentBotIndex == 4) // Neural Network
+        else if (board.getCurrentTurn() && currentBotIndex == 3) // Neural Network
         {
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-            auto activations = network.run(board.vectorBoard(board.bitboard()));
+            auto fwdResult = network.run(board.vectorBoard(board.bitboard()));
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
             std::cout << "Time to make a move: " << std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() << " ns" << std::endl;
 
-            checkers.handleNetworkAction(activations, algorithm);
+            checkers.handleNetworkAction(fwdResult.output, algorithm);
 
             currentBot.stopSpeech(currentBot.getCurrentSpeech());
             currentBot.handleSpeech(algorithm.getCurrentBoardScore());
@@ -512,7 +512,7 @@ namespace core
         checkers.drawBoard(currentBot);
         checkers.drawInfo(algorithm.getCurrentBoardScore(), bots.at(currentBotIndex));
 
-        ImGui::Begin("Extra Info##2", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin("ExtraInfo##2", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
         ImGui::Text("Current Turn: %s", board.getCurrentTurn() == false ? "player" : "bot");
         ImGui::Text("Board Evaluation: %2.f", static_cast<float>(algorithm.getCurrentBoardScore()));
@@ -539,7 +539,7 @@ namespace core
         ImGui::End();
     }
 
-    std::vector<float> activations;
+    NTARS::ForwardResult fwdResult;
 
     void application::runAITraining()
     {
@@ -556,9 +556,9 @@ namespace core
                 ImGui::Text("Current AI Guess: %i", AIGuess);
 
                 std::vector<std::pair<size_t, float>> sortedActivations{};
-                for (size_t i = 0; i < activations.size(); ++i)
+                for (size_t i = 0; i < fwdResult.output.size(); ++i)
                 {
-                    sortedActivations.emplace_back(i, activations[i]);
+                    sortedActivations.emplace_back(i, fwdResult.output[i]);
                 }
 
                 std::sort(sortedActivations.begin(), sortedActivations.end(), 
@@ -568,7 +568,7 @@ namespace core
 
                 ImGui::Separator();
 
-                float totalActivations = std::accumulate(activations.begin(), activations.end(), 0.0f);
+                float totalActivations = std::accumulate(fwdResult.output.begin(), fwdResult.output.end(), 0.0f);
 
                 ImGui::Separator();
                 ImGui::Text("AI Confidence Scores:");
@@ -589,8 +589,8 @@ namespace core
             ImGui::Begin("Controllers", nullptr, ImGuiWindowFlags_NoMove);
                 if (ImGui::Button("Run Network", ImVec2(150, 50)))
                 {
-                    activations = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
-                    AIGuess = std::distance(activations.begin(), std::max_element(activations.begin(), activations.end()));
+                    fwdResult = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
+                    AIGuess = std::distance(fwdResult.activations.begin(), std::max_element(fwdResult.activations.begin(), fwdResult.activations.end()));
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Choose Random Data", ImVec2(150, 50)))
@@ -614,18 +614,21 @@ namespace core
 
                     networkThread = new std::thread([&](){
                         float result = 0.0;
-                        for (auto& minibatch : batches)
+                        for (size_t epoch = 0; epoch < 2; ++epoch)
                         {
-                            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-                            result = numberNetwork.trainCPU(minibatch, learningRate);
-                            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+                            for (auto& minibatch : batches)
+                            {
+                                std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+                                result = numberNetwork.trainCPU(minibatch, learningRate);
+                                std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
-                            std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
-                            std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds to complete this training session" << std::endl;
+                                std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
+                                std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds to complete this training session" << std::endl;
 
-                            activations = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
-                            if (result > 0.97)
-                                break;
+                                fwdResult = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
+                                if (result > 0.97)
+                                    break;
+                            }
                         }
                         finishedTraining = true;
                     });

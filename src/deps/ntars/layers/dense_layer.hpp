@@ -22,25 +22,29 @@ namespace NTARS
             }
         }
         
-        std::vector<float>& forward(const std::vector<float>& inputs, const TMATH::Matrix_t<float>& weights, const TMATH::Matrix_t<float>& biases)
+        std::vector<float> forward(const std::vector<float>& inputs, const TMATH::Matrix_t<float>& weights, const TMATH::Matrix_t<float>& biases)
         {
+            std::vector<float> activations(numNeurons);
+
             for (size_t i = 0; i < numNeurons; ++i)
             {
-                _activations[i] = _neurons[i].activate(inputs, weights.rowAt(i), biases.at(i, 0));
+                activations[i] = _neurons[i].activate(inputs, weights.rowAt(i), biases.at(i, 0));
+                _activations[i] = activations[i];
             }
-            return _activations;
+
+            return activations;
         }
         
         inline size_t getNumInputs() const { return numInputs; }
         inline size_t getNumOutputs() const { return numNeurons; }
         inline Neuron& getNeuron(size_t index) { return _neurons.at(index); }
         inline std::vector<Neuron>& getNeurons() { return _neurons; }
-        inline std::vector<float> getActivations() const { return _activations; }
+        inline std::vector<float> getActivations() { return _activations; }
 
     private:
+        std::vector<float> _activations;
         size_t numNeurons;
         size_t numInputs;
-        std::vector<float> _activations;
         std::vector<Neuron> _neurons;
     };
     

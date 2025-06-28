@@ -57,30 +57,17 @@ namespace TMATH
             return elements_[row * cols_ + col];
         }
 
-        inline std::vector<T> rowAt(size_t row)
-        {
-            assert((row < rows_) && "Matrix Row Index out of bounds");
-            
-            std::vector<T> rowElements(cols_);
-            for (size_t col = 0; col < cols_; ++col)
-            {
-                rowElements[col] = elements_[row * cols_ + col];
-            }
-            return rowElements;
-        }
-
         inline std::vector<T> rowAt(size_t row) const
         {
-            assert((row < rows_) && "Matrix Row Index out of bounds");
-            
+            assert(row < rows_ && "Matrix Row Index out of bounds");
+
             std::vector<T> rowElements(cols_);
             for (size_t col = 0; col < cols_; ++col)
-            {
-                rowElements[col] = elements_[row * cols_ + col];
-            }
+                rowElements[col] = at(row, col);  
+
             return rowElements;
         }
-
+        
         inline size_t rows() const {
             return rows_;
         }
@@ -139,7 +126,8 @@ namespace TMATH
             const T* A = elements_.data();
             const T* B = other.elements_.data();
             T* C = result.elements_.data();
-
+        
+            #pragma omp parallel for
             for (size_t i = 0; i < M; ++i)
             {
                 for (size_t k = 0; k < K; ++k)
@@ -218,17 +206,13 @@ namespace TMATH
         }  
         Matrix_t<T> transpose() const
         {
-            Matrix_t<T> result(cols_, rows_);
-            for (size_t i = 0; i < rows_; ++i)
-            {
-                for (size_t j = 0; j < cols_; ++j)
-                {
-                    result.at(j, i) = at(i, j);
-                }
-            }
+            Matrix_t<T> result = *this;
+
+            std::swap(result.rows_, result.cols_);
+            result.rowMajor_ = !rowMajor_;
+
             return result;
         }
-  
         Matrix_t<T>& operator+=(const Matrix_t<T>& other)
         {
             assert((rows_ == other.rows_ && cols_ == other.cols_) && "Matrix dimensions must agree for addition");
@@ -289,6 +273,8 @@ namespace TMATH
         }
               
     private:
+        bool rowMajor_ = true;
+
         size_t rows_, cols_;
         std::vector<T> elements_;
     };

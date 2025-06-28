@@ -16,8 +16,12 @@ namespace NTARS
     enum NeuralNetworkFlags_
     {
         NeuralNetworkFlags_None = 0,
-        NeuralNetworkFlags_SlowTrain = 1 << 0,
-        NeuralNetworkFlags_Floor = 1 << 1
+    };
+
+    struct ForwardResult 
+    {
+        std::vector<float> output;
+        std::vector<std::vector<float>> activations;
     };
 
     // Neural Network which uses dense layers
@@ -29,8 +33,8 @@ namespace NTARS
 
         ~DenseNeuralNetwork();
 
-        std::vector<float> run(const std::vector<float>& inputs, bool slowRun = false);
-        float trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1, bool slowTrain = false);
+        ForwardResult run(const std::vector<float>& inputs);
+        float trainCPU(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
         void train(std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& miniBatch, float learningRate = 1);
 
         void save();
@@ -57,7 +61,10 @@ namespace NTARS
             return meanSquaredError(results.data(), expected.data(), results.size());
         }
 
-        void calcGradient(const NTARS::DATA::TrainingData<std::vector<float>>& data, int32_t& numCorrect, int32_t& numWrong);
+        void calcGradient(const NTARS::DATA::TrainingData<std::vector<float>>& data,        
+            std::vector<TMATH::Matrix_t<float>>& localWGradient,
+            std::vector<TMATH::Matrix_t<float>>& localBGradient, 
+            int32_t& numCorrect, int32_t& numWrong);
 
         std::vector<TMATH::Matrix_t<float>> weights;
         std::vector<TMATH::Matrix_t<float>> biases;
@@ -68,10 +75,6 @@ namespace NTARS
         std::vector<size_t> _structure;
 
         NeuralNetworkFlags_ flags;
-
-        // Thread related
-
-        std::mutex gradMutex;
 
         // Training Buffers
         std::vector<TMATH::Matrix_t<float>> weightGradients;
