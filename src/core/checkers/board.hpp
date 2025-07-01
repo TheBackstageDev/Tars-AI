@@ -17,7 +17,7 @@
 #define DOWN_LEFT 2
 #define DOWN_RIGHT 3
 
-enum MoveFlag : uint64_t
+enum MoveFlag
 {
     NONE         = 0ULL,
     CAPTURE      = 1ULL << 0,

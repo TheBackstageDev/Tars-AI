@@ -13,11 +13,6 @@
 
 namespace NTARS
 {
-    enum NeuralNetworkFlags_
-    {
-        NeuralNetworkFlags_None = 0,
-    };
-
     struct ForwardResult 
     {
         std::vector<float> output;

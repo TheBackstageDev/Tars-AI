@@ -7,6 +7,22 @@
 
 #include "core/audio.hpp"
 
+// Add bitwise operators for MoveFlag enum class
+inline MoveFlag operator|(MoveFlag a, MoveFlag b) {
+    return static_cast<MoveFlag>(static_cast<int>(a) | static_cast<int>(b));
+}
+inline MoveFlag& operator|=(MoveFlag& a, MoveFlag b) {
+    a = a | b;
+    return a;
+}
+inline MoveFlag operator&(MoveFlag a, MoveFlag b) {
+    return static_cast<MoveFlag>(static_cast<int>(a) & static_cast<int>(b));
+}
+inline MoveFlag& operator&=(MoveFlag& a, MoveFlag b) {
+    a = a & b;
+    return a;
+}
+
 Board::Board(uint32_t board_size)
     : board_size(board_size)
 {
@@ -322,10 +338,14 @@ void BitBoard::makeMove(const BitMove& move, BoardStruct& board, bool isMinimax)
     if (move.indexMask & board.queenBoard) 
         board.queenBoard = (board.queenBoard & ~move.indexMask) | move.moveMask;
 
-    board.occupiedBoard = board.board_state[MAX] | board.board_state[MIN];
+    const bool wasQueen = (move.indexMask & board.queenBoard) != 0;
+    const bool promote = (move.flag & MoveFlag::PROMOTION) != 0;
 
-    if (move.flag & MoveFlag::PROMOTION)
-        board.queenBoard |= move.moveMask;
+    board.queenBoard &= ~move.indexMask; 
+    if (wasQueen || promote)
+        board.queenBoard |= move.moveMask; 
+
+    board.occupiedBoard = board.board_state[MAX] | board.board_state[MIN];
 
     if (!isMinimax)
     {
@@ -416,7 +436,7 @@ void BitBoard::checkMoves(const uint64_t index, bool max, std::vector<BitMove>& 
 {
     std::array<BitDirection, 4> directions = BitMove::getMoveOffsets();
 
-    const uint64_t promotionRankMask = max
+    const uint64_t promotionRankMask = !max
         ? 0x00000000000000FFULL  // MIN promotes on rank 1 (bottom)
         : 0xFF00000000000000ULL; // MAX promotes on rank 8 (top)
 
@@ -431,13 +451,8 @@ void BitBoard::checkMoves(const uint64_t index, bool max, std::vector<BitMove>& 
 
         uint64_t moveMask = max ? (index << directions[d].offset) : (index >> directions[d].offset);
 
-        MoveFlag flag = MoveFlag::NONE;
-
-        if (moveMask & promotionRankMask)   
-            flag = static_cast<MoveFlag>(static_cast<int>(flag) | static_cast<int>(MoveFlag::PROMOTION));
-
         if (!(moveMask & board.occupiedBoard) && moveMask)
-            moves.emplace_back(index, moveMask, 0, flag);
+            moves.emplace_back(index, moveMask, 0, moveMask & promotionRankMask ? PROMOTION : NONE);
     }
 
     checkCaptures(index, max, moves, board);

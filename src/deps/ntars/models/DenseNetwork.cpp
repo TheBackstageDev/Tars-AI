@@ -144,7 +144,12 @@ namespace NTARS
     {
         for (size_t i = 1; i < structure.size(); ++i)
         {
-            _layers.emplace_back(structure[i], structure[i - 1]);
+            NeuralNetworkFlags_ layerFlags = flags & NeuralNetworkFlags_ReLU ? NeuralNetworkFlags_ReLU : NeuralNetworkFlags_None;
+
+            if (i < structure.size() - 1 && flags & NeuralNetworkFlags_ReLU_Internal)
+                layerFlags = NeuralNetworkFlags_ReLU;
+
+            _layers.emplace_back(structure[i], structure[i - 1], layerFlags);
         }
     };
 
@@ -240,7 +245,9 @@ namespace NTARS
             if (l != 0)
             {
                 auto errorTerm = deltas[l].transpose() * weights[l];
-                auto deriv = TMATH::sigmoid_derivative_matrix(fwdResult.activations[l - 1]);
+                auto deriv = (flags & NeuralNetworkFlags_ReLU || flags & NeuralNetworkFlags_ReLU_Internal) 
+                    ? TMATH::relu_derivative_matrix(fwdResult.activations[l - 1]) : TMATH::sigmoid_derivative_matrix(fwdResult.activations[l - 1]);
+
                 deltas[l - 1] = deriv.elementWiseMultiplication(errorTerm.transpose());
             }
 

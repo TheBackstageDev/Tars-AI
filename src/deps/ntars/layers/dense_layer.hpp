@@ -11,8 +11,8 @@ namespace NTARS
     class DenseLayer
     {
     public:
-        DenseLayer(size_t numNeurons, size_t numInputs)
-            : numNeurons(numNeurons), numInputs(numInputs)
+        DenseLayer(size_t numNeurons, size_t numInputs, NeuralNetworkFlags_ flags = NeuralNetworkFlags_None)
+            : numNeurons(numNeurons), numInputs(numInputs), _flags(flags)
         {
             _activations.resize(numNeurons);
             for (size_t i = 0; i < numNeurons; ++i)
@@ -26,9 +26,13 @@ namespace NTARS
         {
             std::vector<float> activations(numNeurons);
 
+            NeuronFlags_ flag = NeuronFlags_None;
+            if (_flags & NeuralNetworkFlags_ReLU)
+                flag = NeuronFlags_ReLU;
+
             for (size_t i = 0; i < numNeurons; ++i)
             {
-                activations[i] = _neurons[i].activate(inputs, weights.rowAt(i), biases.at(i, 0));
+                activations[i] = _neurons[i].activate(inputs, weights.rowAt(i), biases.at(i, 0), flag);
                 _activations[i] = activations[i];
             }
 
@@ -45,6 +49,8 @@ namespace NTARS
         std::vector<float> _activations;
         size_t numNeurons;
         size_t numInputs;
+
+        NeuralNetworkFlags_ _flags;
         std::vector<Neuron> _neurons;
     };
     

@@ -8,7 +8,9 @@
 #include <assert.h>
 #include <stdexcept>
 #include <algorithm>
-#include <omp.h>
+#include <immintrin.h>
+
+#define USE_SIMD
 
 namespace TMATH
 {
@@ -126,8 +128,8 @@ namespace TMATH
             const T* A = elements_.data();
             const T* B = other.elements_.data();
             T* C = result.elements_.data();
-        
-            #pragma omp parallel for
+
+            #ifndef USE_SIMD
             for (size_t i = 0; i < M; ++i)
             {
                 for (size_t k = 0; k < K; ++k)
@@ -139,6 +141,22 @@ namespace TMATH
                     }
                 }
             }
+            #else
+            for (size_t i = 0; i < rows_; ++i) {
+                for (size_t k = 0; k < cols_; ++k) {
+                    __m256 a_vec = _mm256_set1_ps(A[i * cols_ + k]);
+                    size_t j = 0;
+                    for (; j + 8 <= other.cols(); j += 8) {
+                        __m256 b_vec = _mm256_loadu_ps(&B[k * other.cols() + j]);
+                        __m256 c_vec = _mm256_loadu_ps(&C[i * other.cols() + j]);
+                        c_vec = _mm256_add_ps(c_vec, _mm256_mul_ps(a_vec, b_vec));
+                        _mm256_storeu_ps(&C[i * other.cols() + j], c_vec);
+                    }
+                    for (; j < other.cols(); ++j)
+                        C[i * other.cols() + j] += A[i * cols_ + k] * B[k * other.cols() + j];
+                }
+            }
+            #endif
 
             return result;
         }
@@ -236,11 +254,27 @@ namespace TMATH
             assert(rows_ == other.rows_ && cols_ == other.cols_ && "Matrix dimensions must agree for element-wise multiplication");
 
             Matrix_t<T> result(rows_, cols_);
-            std::transform(elements_.begin(),
-                        elements_.end(),
-                        other.elements_.begin(),
-                        result.elements_.begin(),  // Only works if accessible!
-                        std::multiplies<>());
+            size_t N = elements_.size();
+
+            #ifdef USE_SIMD
+                static_assert(std::is_same<T, float>::value, "SIMD version requires float type");
+
+                size_t i = 0;
+                for (; i + 8 <= N; i += 8) {
+                    __m256 a = _mm256_loadu_ps(&elements_[i]);
+                    __m256 b = _mm256_loadu_ps(&other.elements_[i]);
+                    __m256 c = _mm256_mul_ps(a, b);
+                    _mm256_storeu_ps(&result.elements_[i], c);
+                }
+                for (; i < N; ++i)
+                    result.elements_[i] = elements_[i] * other.elements_[i];
+
+            #else
+                std::transform(elements_.begin(), elements_.end(),
+                            other.elements_.begin(),
+                            result.elements_.begin(),
+                            std::multiplies<>());
+            #endif
 
             return result;
         }

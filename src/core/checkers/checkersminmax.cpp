@@ -30,6 +30,30 @@ namespace NETWORK
         return emptyBoard;
     }
 
+    std::vector<float> getTrainingBoard(BoardStruct& board_state)
+    {
+        std::vector<float> result(64, 0.0f); 
+
+        for (int i = 0; i < 64; ++i)
+        {
+            uint64_t mask = 1ULL << i;
+
+            bool occupied = board_state.occupiedBoard & mask;
+            if (!occupied) continue;
+
+            bool isMax = board_state.board_state[MAX] & mask;
+            bool isMin = board_state.board_state[MIN] & mask;
+            bool isQueen = board_state.queenBoard & mask;
+
+            if (isMax)
+                result[i] = isQueen ? 2.0f : 1.0f;
+            else if (isMin)
+                result[i] = isQueen ? 4.0f : 3.0f;
+        }
+
+        return result;
+    }
+
     BitMove CheckersMinMax::getBestMove(BoardStruct& board_state, std::vector<NTARS::DATA::TrainingData<std::vector<float>>>& trainingData, bool max, float blunderChance)
     {
         checkedMoves = 0;
@@ -137,7 +161,7 @@ namespace NETWORK
 
         if ((chosenMove.moveMask != 0 || chosenMove.indexMask != 0) && _inserted == true) {
             NTARS::DATA::TrainingData<std::vector<float>> moveData;
-            moveData.data = board.vectorBoard(board_state);
+            moveData.data = getTrainingBoard(board_state);
             moveData.label = getTrainingLabel(chosenMove.moveMask);
 
             auto exists = std::find_if(trainingData.begin(), trainingData.end(), 

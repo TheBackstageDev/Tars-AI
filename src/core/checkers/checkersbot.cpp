@@ -62,7 +62,10 @@ void Bot::chooseSpeech(SpeechType type)
     }
 
     if (matchingSpeeches.empty())
+    {
         info.currentSpeech = 0;
+        return;
+    }
 
     static bool seeded = false;
     if (!seeded)
@@ -103,7 +106,7 @@ void Bot::drawBot(bool showSpeech)
         ImGui::Dummy(ImVec2(0.0f, 4.0f));
 
         const char* bubbleText = info.speeches[info.currentSpeech].text.c_str();
-        const float bubbleWidth = 360.0f;
+        const float bubbleWidth = 500.0f;
         const float bubbleTextPadding = 10.0f;
 
         ImVec2 textSize = ImGui::CalcTextSize(bubbleText, nullptr, true, bubbleWidth - 2 * bubbleTextPadding);

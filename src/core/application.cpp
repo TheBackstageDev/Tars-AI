@@ -43,7 +43,7 @@ bool finishedTraining = false;
 
 void trainCheckersNetwork()
 {
-    NTARS::DenseNeuralNetwork network{{64, 500, 250, 100, 64}, "CheckinTime"};
+    NTARS::DenseNeuralNetwork network{{64, 1000, 500, 100, 64}, "CheckinTime"};
     //NTARS::DenseNeuralNetwork network{"CheckinTime.json"};
 
     const size_t batch_size = 500;
@@ -135,6 +135,38 @@ void trainCheckersNetwork()
         core::SoundHandle::add("terminator_taunt",         "audio/terminator/taunt.mp3");
         core::SoundHandle::add("terminator_encouragement", "audio/terminator/encouragement.mp3");
         core::SoundHandle::add("terminator_surprise",      "audio/terminator/surprise.mp3");
+
+        //Joker
+        // NEUTRAL
+        core::SoundHandle::add("neutral",        "audio/joker/neutral.mp3");
+        core::SoundHandle::add("neutral_1",      "audio/joker/neutral_1.mp3");
+        core::SoundHandle::add("neutral_2",      "audio/joker/neutral_2.mp3");
+        core::SoundHandle::add("capture",        "audio/joker/capture.mp3");
+        core::SoundHandle::add("capture_1",      "audio/joker/capture_1.mp3");
+        core::SoundHandle::add("capture_2",      "audio/joker/capture_2.mp3");
+        core::SoundHandle::add("multi_capture",      "audio/joker/multi_capture.mp3");
+        core::SoundHandle::add("multi_capture_1",    "audio/joker/multi_capture_1.mp3");
+        core::SoundHandle::add("multi_capture_2",    "audio/joker/multi_capture_2.mp3");
+        core::SoundHandle::add("good_move",        "audio/joker/good_move.mp3");
+        core::SoundHandle::add("good_move_1",      "audio/joker/good_move_1.mp3");
+        core::SoundHandle::add("good_move_2",      "audio/joker/good_move_2.mp3");
+        core::SoundHandle::add("bad_move",         "audio/joker/bad_move.mp3");
+        core::SoundHandle::add("bad_move_1",       "audio/joker/bad_move_1.mp3");
+        core::SoundHandle::add("bad_move_2",       "audio/joker/bad_move_2.mp3");
+        core::SoundHandle::add("win",              "audio/joker/win.mp3");
+        core::SoundHandle::add("win_1",            "audio/joker/win_1.mp3");
+        core::SoundHandle::add("win_2",            "audio/joker/win_2.mp3");
+        core::SoundHandle::add("lose",             "audio/joker/lose.mp3");
+        core::SoundHandle::add("lose_1",           "audio/joker/lose_1.mp3");
+        core::SoundHandle::add("lose_2",           "audio/joker/lose_2.mp3");
+        core::SoundHandle::add("lose_3",           "audio/joker/lose_3.mp3");
+        core::SoundHandle::add("encouragement",    "audio/joker/encouragement.mp3");
+        core::SoundHandle::add("encouragement_1",  "audio/joker/encouragement_1.mp3");
+        core::SoundHandle::add("encouragement_2",  "audio/joker/encouragement_2.mp3");
+        core::SoundHandle::add("surprise",         "audio/joker/surprise.mp3");
+        core::SoundHandle::add("surprise_1",       "audio/joker/surprise_1.mp3");
+        core::SoundHandle::add("surprise_2",       "audio/joker/surprise_2.mp3");
+        core::SoundHandle::add("surprise_3",       "audio/joker/surprise_3.mp3");
     }
 
     BoardStruct generateRandomBoard()
@@ -205,7 +237,6 @@ namespace core
 {
     application::application(const std::string& title, uint32_t width, uint32_t height)
     {
-        //NeuralNetworkTrain();
         //trainCheckersNetwork();
         
         dataset = mnist::read_dataset<std::vector, std::vector, uint8_t, uint8_t>(MNIST_DATA_LOCATION);
@@ -306,31 +337,63 @@ namespace core
             { "Você tem potencial... se continuar buscando conhecimento.", "encouragement", SpeechType::Encouragement },
             { "Essa jogada... vibrou estranho.", "surprise", SpeechType::Surprise }
         };
-        bots.emplace_back(Bot(etBilu, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+        bots.emplace_back(Bot(etBilu, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\etbilu.png"));
 
-        // Strategos
-        BotInfo strategos;
-        strategos.name = "Strategos";
-        strategos.blunderChance = 0.05f;
-        strategos.speeches = {
-            { "The board is set. Your move.", "neutral", SpeechType::Neutral },
-            { "Sacrifices are inevitable.", "capture", SpeechType::Capture },
-            { "A calculated strike across the ranks.", "multi_capture", SpeechType::MultiCapture },
-            { "Elegant play. But the war isn't over.", "good_move", SpeechType::GoodMove },
-            { "Flawed tactics. You will regret that.", "bad_move", SpeechType::BadMove },
-            { "Victory, as predicted.", "win", SpeechType::Win },
-            { "Impressive. That deviation was not forecasted.", "lose", SpeechType::Lose },
-            { "I anticipated your ambition. It will cost you.", "taunt", SpeechType::Taunt },
-            { "Adaptation is a sign of strength. Continue.", "encouragement", SpeechType::Encouragement },
-            { "Ah... you've shifted your tempo. Noted.", "surprise", SpeechType::Surprise }
+        BotInfo joker;
+        joker.name = "Coringa";
+        joker.blunderChance = 0.05f;
+        joker.speeches = {
+            // Neutral
+            { "Sabe o que eu percebi? Ninguém entra em pânico... até as coisas saírem do controle.", "neutral", SpeechType::Neutral },
+            { "É só um jogo, dizem. Mas e se for mais do que isso? e se for um teste de sanidade?", "neutral_1", SpeechType::Neutral },
+            { "Eu sou um palhaço.. e esse tabuleiro.. meu circo, Murray..", "neutral_2", SpeechType::Neutral },
+
+            // Capture
+            { "Uma peça a menos. Você sabe o que sobra pro beta, Murray? Nada.", "capture", SpeechType::Capture },
+            { "E lá se vai mais uma... como lágrimas na chuva.", "capture_1", SpeechType::Capture },
+            { "Você protegeu ela tão bem... que eu fiz questão de derrubar.", "capture_2", SpeechType::Capture },
+
+            // MultiCapture
+            { "Pedaços caindo em sequência... adoro quando tudo desmorona rápido.", "multi_capture", SpeechType::MultiCapture },
+            { "O mundo pode ser cruel. E hoje fui eu quem lembrou isso a você.", "multi_capture_1", SpeechType::MultiCapture },
+            { "As peças caem... como a sua sanidade, e com isso, o skibidi-toilet parece nosso único salvador..", "multi_capture_2", SpeechType::MultiCapture },
+
+            // Good Move
+            { "Não está nada mal. Está começando a pensar como eu...", "good_move", SpeechType::GoodMove },
+            { "Gostei disso. Rápido, inesperado... um toque de loucura.", "good_move_1", SpeechType::GoodMove },
+            { "Você fez algo que eu não previ. Adoro isso.", "good_move_2", SpeechType::GoodMove },
+
+            // Bad Move
+            { "Essa jogada? Hahaha... eu nem teria feito pior!", "bad_move", SpeechType::BadMove },
+            { "Você errou. Mas relaxa, a cidade também erra... ao confiar.", "bad_move_1", SpeechType::BadMove },
+            { "Esse erro... foi a parte mais divertida até agora!", "bad_move_2", SpeechType::BadMove },
+
+            // Win
+            { "Você sabe o que sobra pro beta, Murray?", "win", SpeechType::Win },
+            { "Tinha dois... o Batman... e o Batimin. O Batman morreu. Sabe quem sobrou? Hahaha...", "win_1", SpeechType::Win },
+            { "Vencer nunca foi o objetivo. Só queria ver o circo pegar fogo, ou melhor, o tabuleiro.", "win_2", SpeechType::Win },
+
+            // Lose
+            { "Você ganhou. Mas você se sente mais seguro agora?", "lose", SpeechType::Lose },
+            { "Perdi? Claro. Às vezes, até o caos tira folga.", "lose_1", SpeechType::Lose },
+            { "Cansei de perder aqui... vou tentar minha sorte no jogo do tigrinho.", "lose_2", SpeechType::Lose },
+            { "Uau, você venceu. Sabe o que isso te faz? Exatamente... ainda um beta, Murray.", "lose_3", SpeechType::Lose },
+
+            // Encouragement
+            { "Vai lá... me mostre o que acontece quando um plano falha.", "encouragement", SpeechType::Encouragement },
+            { "Continue. Talvez você descubra algo terrível sobre si mesmo.", "encouragement_1", SpeechType::Encouragement },
+            { "Você está indo bem... para alguém que ainda acredita na ordem.", "encouragement_2", SpeechType::Encouragement },
+
+            // Surprise
+            { "Sabe o que sobra pro peão quando a rainha cai? Só o medo... e eu adoro isso.", "surprise_2", SpeechType::Surprise },
+            { "Sabia que a sora Elisiana de matemática é a minha favorita?", "surprise_3", SpeechType::Surprise }
         };
-        bots.emplace_back(Bot(strategos, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+        bots.emplace_back(Bot(joker, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\joker.png"));
 
-        // Echo
-        BotInfo echo;
-        echo.name = "Echo";
-        echo.blunderChance = 0.15f;
-        echo.speeches = {
+        BotInfo yoda;
+        yoda.name = "Yoda";
+        yoda.blunderChance = 0.05f;
+        yoda.speeches = {
             { "Your turn. Lets play clean.", "neutral", SpeechType::Neutral },
             { "Bait taken. Nicely sprung.", "capture", SpeechType::Capture },
             { "That was surgical. Respect.", "multi_capture", SpeechType::MultiCapture },
@@ -342,11 +405,11 @@ namespace core
             { "Keep going. You've got something here.", "encouragement", SpeechType::Encouragement },
             { "Bold move. Didn't expect that line.", "surprise", SpeechType::Surprise }
         };
-        bots.emplace_back(Bot(echo, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
+        bots.emplace_back(Bot(yoda, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\terminator.png"));
 
         BotInfo netrix;
         netrix.name = "Netrix"; // short for Neural Execution Terminal Replica Interface eXperiment
-        netrix.blunderChance = 0.1f;
+        netrix.blunderChance = 0.0f;
 
         netrix.speeches = {
             { "BEEP. BOOP. Ready to calculate.", "neutral", SpeechType::Neutral },
@@ -363,10 +426,9 @@ namespace core
 
         bots.emplace_back(Bot(netrix, "C:\\Users\\gabri\\OneDrive\\Documentos\\GitHub\\Tars-AI\\src\\resources\\images\\neurabot.png"));
 
-                // Terminator
         BotInfo terminator;
         terminator.name = "Terminator";
-        terminator.blunderChance = 0.01f;
+        terminator.blunderChance = 0.f;
         terminator.speeches = {
             { "Processando... Continue a jogada.", "terminator_neutral", SpeechType::Neutral },
             { "Alvo identificado. Eliminado sem dó.", "terminator_capture", SpeechType::Capture },
@@ -614,21 +676,16 @@ namespace core
 
                     networkThread = new std::thread([&](){
                         float result = 0.0;
-                        for (size_t epoch = 0; epoch < 2; ++epoch)
+                        for (auto& minibatch : batches)
                         {
-                            for (auto& minibatch : batches)
-                            {
-                                std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-                                result = numberNetwork.trainCPU(minibatch, learningRate);
-                                std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+                            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+                            result = numberNetwork.trainCPU(minibatch, learningRate);
+                            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
-                                std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
-                                std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds to complete this training session" << std::endl;
+                            std::cout << "Result (Rights / Total): " << std::to_string(result) << std::endl;
+                            std::cout << "it took " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds to complete this training session" << std::endl;
 
-                                fwdResult = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
-                                if (result > 0.97)
-                                    break;
-                            }
+                            fwdResult = numberNetwork.run(std::vector<float>(image.begin(), image.end()));
                         }
                         finishedTraining = true;
                     });
